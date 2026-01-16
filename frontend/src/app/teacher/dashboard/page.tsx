@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { isAuthenticated, logout } from "@/lib/teacherAuth";
 import { LogOut, Users, Package, ShoppingBag, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,9 +22,7 @@ export default function TeacherDashboardPage() {
     const [pendingDeliveries, setPendingDeliveries] = useState(0);
 
     useEffect(() => {
-        // Check auth
-        const auth = localStorage.getItem("teacherAuth");
-        if (!auth) {
+        if (!isAuthenticated()) {
             router.push("/teacher");
             return;
         }
@@ -77,7 +76,7 @@ export default function TeacherDashboardPage() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem("teacherAuth");
+        logout();
         router.push("/teacher");
     };
 

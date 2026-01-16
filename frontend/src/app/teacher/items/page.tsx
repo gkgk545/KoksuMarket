@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase, Item } from "@/lib/supabase";
-import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader2 } from "lucide-react";
+import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
+import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader2, Upload, Download } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ItemsPage() {
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<Item[]>([]);
     const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -22,8 +24,7 @@ export default function ItemsPage() {
     });
 
     useEffect(() => {
-        const auth = localStorage.getItem("teacherAuth");
-        if (!auth) {
+        if (!isAuthenticated()) {
             router.push("/teacher");
             return;
         }
@@ -102,6 +103,48 @@ export default function ItemsPage() {
         }
     };
 
+    // CSV Upload
+    const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const text = await file.text();
+        const rows = parseCSV(text);
+
+        const startIndex = rows[0]?.[0]?.toLowerCase().includes('상품') ? 1 : 0;
+
+        const itemsToAdd = rows.slice(startIndex).filter(row => row[0]?.trim()).map(row => ({
+            name: row[0]?.trim() || "",
+            cost: parseInt(row[1]) || 1,
+            quantity: parseInt(row[2]) || 10,
+            image_url: row[3]?.trim() || null,
+        }));
+
+        if (itemsToAdd.length === 0) {
+            alert("추가할 상품이 없습니다. CSV 형식을 확인해주세요.\n형식: 상품명,가격,재고,이미지URL");
+            return;
+        }
+
+        const { error } = await supabase.from("market_item").insert(itemsToAdd);
+
+        if (error) {
+            alert("업로드 실패: " + error.message);
+        } else {
+            alert(`${itemsToAdd.length}개의 상품이 추가되었습니다.`);
+            loadItems();
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    // CSV Export
+    const handleExport = () => {
+        const headers = ["상품명", "가격", "재고", "이미지URL"];
+        const rows = items.map(i => [i.name, i.cost.toString(), i.quantity.toString(), i.image_url || ""]);
+        const csv = generateCSV(headers, rows);
+        downloadCSV("상품목록.csv", csv);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -112,25 +155,56 @@ export default function ItemsPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Hidden file input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv"
+                onChange={handleCSVUpload}
+                className="hidden"
+            />
+
             {/* Header */}
             <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/teacher/dashboard"
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <h1 className="text-2xl font-bold text-indigo-600">상품 관리</h1>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-4">
+                            <Link
+                                href="/teacher/dashboard"
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </Link>
+                            <h1 className="text-2xl font-bold text-indigo-600">상품 관리</h1>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            >
+                                <Upload className="w-4 h-4" />
+                                <span>CSV 업로드</span>
+                            </button>
+                            <button
+                                onClick={handleExport}
+                                disabled={items.length === 0}
+                                className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>내보내기</span>
+                            </button>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>상품 추가</span>
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
-                        <span>상품 추가</span>
-                    </button>
+                    <div className="mt-2 text-xs text-gray-500">
+                        CSV 형식: 상품명,가격,재고,이미지URL (예: 연필,2,50,https://...)
+                    </div>
                 </div>
             </header>
 

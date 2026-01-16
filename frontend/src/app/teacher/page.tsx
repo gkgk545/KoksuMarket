@@ -1,26 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-
-// Simple teacher password (in production, use Supabase Auth)
-const TEACHER_PASSWORD = "teacher2026";
+import { login, isAuthenticated } from "@/lib/teacherAuth";
 
 export default function TeacherLoginPage() {
     const router = useRouter();
     const [password, setPassword] = useState("");
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // Auto-redirect if already authenticated
+        if (isAuthenticated()) {
+            router.push("/teacher/dashboard");
+        }
+    }, [router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
-        // Simple password check
-        if (password === TEACHER_PASSWORD) {
-            localStorage.setItem("teacherAuth", "true");
+        if (login(password, rememberMe)) {
             router.push("/teacher/dashboard");
         } else {
             setError("비밀번호가 틀렸습니다.");
@@ -55,6 +59,19 @@ export default function TeacherLoginPage() {
                             placeholder="비밀번호를 입력하세요"
                             required
                         />
+                    </div>
+
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="rememberMe"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                        <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-600">
+                            로그인 유지 (7일)
+                        </label>
                     </div>
 
                     {error && (
