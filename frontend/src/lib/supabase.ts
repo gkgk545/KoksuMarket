@@ -16,8 +16,9 @@ export interface Student {
 export interface Item {
     id: number;
     name: string;
-    price: number;
+    cost: number;
     quantity: number;
+    link: string | null;
     image_url: string | null;
 }
 
