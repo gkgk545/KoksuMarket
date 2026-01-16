@@ -117,7 +117,7 @@ export default function LoginPage() {
                     className="h-24 rounded-2xl bg-white dark:bg-slate-800 border-2 border-transparent hover:border-purple-500 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center justify-center gap-2 group"
                   >
                     <span className="text-3xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-purple-600 group-hover:scale-110 transition-transform">{grade}</span>
-                    <span className="text-xs text-gray-400">학년</span>
+                    <span className="text-xs text-gray-700">학년</span>
                   </button>
                 ))}
               </div>
