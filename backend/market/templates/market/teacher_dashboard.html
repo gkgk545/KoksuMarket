@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>교사 대시보드 | 곡수마켓</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 50%, #fce7f3 100%);
+            min-height: 100vh;
+            color: #1e293b;
+            padding-bottom: 4rem;
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        /* Glass Header */
+        header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #7c3aed;
+            /* Primary Purple */
+        }
+
+        .section-title {
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #334155;
+        }
+
+        .grade-btn {
+            background: white;
+            border: none;
+            border-radius: 16px;
+            padding: 1.5rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #475569;
+            text-decoration: none;
+        }
+
+        .grade-btn:hover {
+            transform: scale(1.02);
+            color: #9333ea;
+            box-shadow: 0 10px 15px -3px rgba(147, 51, 234, 0.15);
+        }
+
+        .badge-pill {
+            background: #f1f5f9;
+            color: #64748b;
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            font-size: 0.9rem;
+        }
+
+        .btn-logout {
+            background: #ef4444;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 99px;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h4 mb-0 fw-bold"
+                style="background: linear-gradient(to right, #9333ea, #db2777); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                곡수마켓 선생님
+            </h1>
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-secondary rounded-pill px-3 py-1" style="font-size: 0.85rem;">🏠 학생
+                    마켓</a>
+                <a href="/admin/" class="btn btn-outline-primary rounded-pill px-3 py-1" style="font-size: 0.85rem;">⚙️
+                    관리자</a>
+                <a href="{% url 'teacher_logout' %}" class="btn-logout text-decoration-none">로그아웃</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Stats Section -->
+        <h2 class="section-title">📊 전체 현황</h2>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-5">
+            <!-- Stat 1 -->
+            <div class="col">
+                <div class="glass-card p-4 d-flex flex-column h-100">
+                    <div class="text-center mb-1">
+                        <h5 class="text-muted small fw-bold text-uppercase ls-1 mb-2">총 학생 수</h5>
+                    </div>
+                    <!-- GUIDE: 중앙 정렬 영역 (flex-grow-1) -->
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="stat-value" style="line-height: 1;">{{ student_count }}</span>
+                            <span class="text-secondary fw-bold fs-5">명</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Stat 2 -->
+            <div class="col">
+                <div class="glass-card p-4 d-flex flex-column h-100">
+                    <div class="text-center mb-1">
+                        <h5 class="text-muted small fw-bold text-uppercase ls-1 mb-2">발행된 티켓</h5>
+                    </div>
+                    <!-- GUIDE: 중앙 정렬 영역 -->
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="stat-value" style="line-height: 1;">{{ total_tickets }}</span>
+                            <span class="text-secondary fw-bold fs-5">Tickets</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Stat 3: Champion -->
+            <div class="col">
+                <div class="glass-card p-4 d-flex flex-column h-100 position-relative">
+                    <div class="text-center mb-1">
+                        <span class="badge bg-warning text-dark rounded-pill px-3 fw-bold">🏆 Ticket
+                            King</span>
+                        {% if top_student_overall %}
+                        <h4 class="fw-bold mb-0 fs-5 text-dark mt-2">{{ top_student_overall.name }}</h4>
+                        {% endif %}
+                    </div>
+                    <!-- GUIDE: 중앙 정렬 영역 (flex-grow-1) -->
+                    <!-- GUIDE: 중앙 정렬 영역 (flex-grow-1) -->
+                    <div class="flex-grow-1 d-flex flex-column align-items-center justify-content-center">
+                        {% if top_student_overall %}
+                        <!-- GUIDE: 숫자와 단위 정렬 (align-items-center) -->
+                        <div class="d-flex align-items-center gap-2 mb-4">
+                            <span class="stat-value" style="line-height:1;">
+                                {{ top_student_overall.ticket_count }}
+                            </span>
+                            <span class="text-secondary fw-bold fs-5">Ticket</span>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">데이터 없음</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Stat 4: Popular -->
+            <div class="col">
+                <div class="glass-card h-100 d-flex flex-column">
+                    <div class="p-3 border-bottom bg-white bg-opacity-50">
+                        <h6 class="mb-0 fw-bold text-center">🔥 인기 아이템</h6>
+                    </div>
+                    <ul class="list-group list-group-flush bg-transparent">
+                        {% for item in popular_items %}
+                        <li
+                            class="list-group-item bg-transparent border-0 d-flex justify-content-between align-items-center py-2">
+                            <span class="small fw-medium">{{ forloop.counter }}. {{ item.item__name }}</span>
+                            <span class="badge bg-light text-secondary rounded-pill">{{ item.purchase_count }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item bg-transparent text-center small text-muted">기록 없음</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grade Links -->
+        <h2 class="section-title mt-5">🎟️ 학년별 관리</h2>
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            {% for grade_num, grade_name in grades_links %}
+            <div class="col">
+                <a href="{% url 'teacher_student_list' grade_num %}" class="grade-btn">
+                    <span class="d-flex align-items-center gap-3">
+                        <span class="fs-4 fw-bold text-primary">{{ grade_num }}</span>
+                        <span>{{ grade_name }} 관리</span>
+                    </span>
+                    <span class="badge-pill">이동 &rarr;</span>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }} | 곡수마켓 관리자{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">곡수마켓 관리자</a></h1>
+{% endblock %}
+
+{% block welcome-msg %}
+    {% if user.is_authenticated %}
+        안녕하세요, <strong>{{ user.get_username }}</strong>님
+    {% endif %}
+{% endblock %}
