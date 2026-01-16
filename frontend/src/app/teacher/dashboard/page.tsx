@@ -155,7 +155,7 @@ export default function TeacherDashboardPage() {
                                 <Package className="w-6 h-6 text-orange-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500">배송 대기</p>
+                                <p className="text-sm text-gray-500">전달 대기</p>
                                 <p className="text-2xl font-bold text-orange-600">{pendingDeliveries}건</p>
                             </div>
                         </div>
@@ -206,7 +206,7 @@ export default function TeacherDashboardPage() {
                         </div>
                         <div>
                             <h3 className="font-bold">구매 내역 관리</h3>
-                            <p className="text-sm text-gray-500">배송 상태 변경</p>
+                            <p className="text-sm text-gray-500">전달 상태 변경</p>
                         </div>
                     </Link>
 

@@ -153,6 +153,17 @@ export default function GradeStudentsPage() {
         downloadCSV(`${grade}학년_학생목록.csv`, csv);
     };
 
+    // CSV Template Download
+    const handleDownloadTemplate = () => {
+        const headers = ["이름", "비밀번호", "티켓수"];
+        const exampleRows = [
+            ["홍길동", "1234", "5"],
+            ["김철수", "0000", "10"],
+        ];
+        const csv = generateCSV(headers, exampleRows);
+        downloadCSV("학생_업로드_양식.csv", csv);
+    };
+
     // Selection
     const toggleSelect = (id: number) => {
         const newSet = new Set(selectedIds);
@@ -252,6 +263,13 @@ export default function GradeStudentsPage() {
                                 <span>CSV 업로드</span>
                             </button>
                             <button
+                                onClick={handleDownloadTemplate}
+                                className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>양식 다운로드</span>
+                            </button>
+                            <button
                                 onClick={handleExport}
                                 disabled={students.length === 0}
                                 className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
@@ -267,11 +285,6 @@ export default function GradeStudentsPage() {
                                 <span>학생 추가</span>
                             </button>
                         </div>
-                    </div>
-
-                    {/* CSV Format Hint */}
-                    <div className="mt-2 text-xs text-gray-500">
-                        CSV 형식: 이름,비밀번호,초기티켓수 (예: 홍길동,1234,5)
                     </div>
                 </div>
             </header>

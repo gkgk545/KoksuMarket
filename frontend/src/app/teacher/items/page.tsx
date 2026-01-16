@@ -145,6 +145,17 @@ export default function ItemsPage() {
         downloadCSV("상품목록.csv", csv);
     };
 
+    // CSV Template Download
+    const handleDownloadTemplate = () => {
+        const headers = ["상품명", "가격", "재고", "이미지URL"];
+        const exampleRows = [
+            ["연필", "1", "50", ""],
+            ["지우개", "2", "30", "https://example.com/eraser.jpg"],
+        ];
+        const csv = generateCSV(headers, exampleRows);
+        downloadCSV("상품_업로드_양식.csv", csv);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -186,6 +197,13 @@ export default function ItemsPage() {
                                 <span>CSV 업로드</span>
                             </button>
                             <button
+                                onClick={handleDownloadTemplate}
+                                className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>양식 다운로드</span>
+                            </button>
+                            <button
                                 onClick={handleExport}
                                 disabled={items.length === 0}
                                 className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
@@ -201,9 +219,6 @@ export default function ItemsPage() {
                                 <span>상품 추가</span>
                             </button>
                         </div>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                        CSV 형식: 상품명,가격,재고,이미지URL (예: 연필,2,50,https://...)
                     </div>
                 </div>
             </header>
