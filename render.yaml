@@ -2,14 +2,15 @@ services:
   - type: web
     name: koksu-market-backend
     env: python
+    plan: free # Ensure we use the free tier
     buildCommand: "./backend/build.sh"
     startCommand: "cd backend && gunicorn marketday_project.wsgi:application"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0 # Or appropriate version
+        value: 3.11.0
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false # Set this in Render dashboard
+        sync: false # Set this value in the Render UI during/after deployment
