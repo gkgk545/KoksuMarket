@@ -71,8 +71,28 @@ export default function GradeStudentsPage() {
     };
 
     const deleteStudent = async (studentId: number, studentName: string) => {
-        if (!confirm(`정말 ${studentName} 학생을 삭제하시겠습니까?`)) return;
+        // 먼저 구매 기록이 있는지 확인
+        const { count } = await supabase
+            .from("market_purchase")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", studentId);
 
+        let confirmMessage = `정말 ${studentName} 학생을 삭제하시겠습니까?`;
+        if (count && count > 0) {
+            confirmMessage = `${studentName} 학생은 ${count}건의 구매 기록이 있습니다.\n삭제하면 해당 구매 기록도 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`;
+        }
+
+        if (!confirm(confirmMessage)) return;
+
+        // 먼저 관련 구매 기록 삭제
+        if (count && count > 0) {
+            await supabase
+                .from("market_purchase")
+                .delete()
+                .eq("student_id", studentId);
+        }
+
+        // 학생 삭제
         const { error } = await supabase
             .from("market_student")
             .delete()
