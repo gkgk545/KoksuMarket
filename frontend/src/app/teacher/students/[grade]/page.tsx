@@ -7,7 +7,6 @@ import { supabase, Student } from "@/lib/supabase";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
 import { ArrowLeft, Plus, Minus, Save, Trash2, UserPlus, Loader2, Upload, Download, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
-
 export default function GradeStudentsPage() {
     const router = useRouter();
     const params = useParams();

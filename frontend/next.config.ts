@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "export",
   trailingSlash: true,
-  // Django proxy rewrites removed - now using Supabase directly
 };
 
 export default nextConfig;
