@@ -33,28 +33,43 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
         setMsg(null);
         setIsConfirmOpen(false); // Close the confirmation modal
 
+        let successCount = 0;
+        let lastError = null;
+
         try {
             // Since backend doesn't support bulk, we loop. 
             // In production, this should be a single transaction API.
             for (const item of items) {
                 for (let i = 0; i < item.quantity; i++) {
                     await api.purchaseItem(currentUser.id, item.id);
+                    successCount++;
                 }
             }
-
-            setMsg({ type: 'success', text: '구매가 완료되었습니다!' });
-            setTimeout(() => {
-                clearCart();
-                onPurchaseComplete();
-                onClose();
-                setMsg(null);
-            }, 1500);
-
         } catch (err: any) {
-            setMsg({ type: 'error', text: err.message || '구매 중 오류가 발생했습니다.' });
-        } finally {
-            setLoading(false);
+            lastError = err;
         }
+
+        if (successCount > 0) {
+            // Refresh user tickets and trigger items refresh hook
+            onPurchaseComplete(); 
+            window.dispatchEvent(new Event("purchase_complete"));
+            
+            clearCart();
+
+            if (lastError) {
+                setMsg({ type: 'error', text: `일부 항목 구매 성공 후 품절 등의 이유로 오류가 발생했습니다: ${lastError.message}` });
+            } else {
+                setMsg({ type: 'success', text: '구매가 완료되었습니다!' });
+                setTimeout(() => {
+                    onClose();
+                    setMsg(null);
+                }, 1500);
+            }
+        } else if (lastError) {
+            setMsg({ type: 'error', text: lastError.message || '구매 중 오류가 발생했습니다.' });
+        }
+
+        setLoading(false);
     };
 
     return (

@@ -102,6 +102,7 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
                 const data = await api.getStudentDetail(parsed.id);
                 setUser(data.student);
                 localStorage.setItem("user", JSON.stringify(data.student)); // Sync local storage
+                window.dispatchEvent(new Event("auth_refreshed"));
             } catch (e) {
                 console.error("Auth verify failed", e);
             }

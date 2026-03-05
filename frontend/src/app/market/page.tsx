@@ -10,17 +10,27 @@ export default function MarketPage() {
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        // Get user from localStorage (it should be fresh from layout sync, but layout syncs async)
-        // Actually layout fetches fresh data. We can read from localStorage for render speed
-        // or re-fetch. Since Layout passes children, children remount? No.
-        // Let's just read localStorage.
-        const stored = localStorage.getItem("user");
-        if (stored) setUser(JSON.parse(stored));
-
+    const loadItems = () => {
         api.getItems()
             .then(setItems)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        const loadUserFromStorage = () => {
+            const stored = localStorage.getItem("user");
+            if (stored) setUser(JSON.parse(stored));
+        };
+
+        loadUserFromStorage();
+        loadItems();
+
+        window.addEventListener("purchase_complete", loadItems);
+        window.addEventListener("auth_refreshed", loadUserFromStorage);
+        return () => {
+            window.removeEventListener("purchase_complete", loadItems);
+            window.removeEventListener("auth_refreshed", loadUserFromStorage);
+        };
     }, []);
 
     if (loading) {
