@@ -21,8 +21,11 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                     <Link href="/" className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-80 transition-opacity">
                         곡수마켓
                     </Link>
-                    <nav className="hidden md:flex gap-4 text-sm font-medium text-gray-500">
-                        {/* Links moved to login page */}
+                    <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-600 dark:text-gray-300 ml-8">
+                        <Link href="/market" className="hover:text-purple-600 transition-colors">상품 목록</Link>
+                        <Link href="/market/funding" className="hover:text-pink-600 transition-colors flex items-center gap-1">
+                            공동 펀딩
+                        </Link>
                     </nav>
                 </div>
 

@@ -29,6 +29,27 @@ export interface Purchase {
     item_cost?: number;
 }
 
+export interface Funding {
+    id: number;
+    title: string;
+    description: string | null;
+    target_amount: number;
+    current_amount: number;
+    image_url: string | null;
+    deadline: string | null;
+    is_completed: boolean;
+}
+
+export interface FundingParticipation {
+    id: number;
+    funding_id: number;
+    student_id: number;
+    amount: number;
+    timestamp: string;
+    // Joined data
+    student_name?: string;
+}
+
 export const api = {
     // Get students by grade
     getStudentsByGrade: async (grade: number): Promise<Student[]> => {
@@ -124,6 +145,69 @@ export const api = {
         return {
             status: 'success',
             message: '구매가 완료되었습니다!',
+            student: data as Student,
+        };
+    },
+
+    // Get all fundings
+    getFundings: async (): Promise<Funding[]> => {
+        const { data, error } = await supabase
+            .from('market_funding')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
+    // Get a specific funding details with participants
+    getFundingDetail: async (funding_id: number): Promise<{ funding: Funding; participations: FundingParticipation[] }> => {
+        const { data: funding, error: fundingError } = await supabase
+            .from('market_funding')
+            .select('*')
+            .eq('id', funding_id)
+            .single();
+
+        if (fundingError) throw new Error(fundingError.message);
+
+        const { data: participations, error: partError } = await supabase
+            .from('market_funding_participation')
+            .select(`
+                id, funding_id, student_id, amount, timestamp,
+                market_student (name)
+            `)
+            .eq('funding_id', funding_id)
+            .order('timestamp', { ascending: false });
+
+        if (partError) throw new Error(partError.message);
+
+        const transformedParts = (participations || []).map((p: any) => ({
+            id: p.id,
+            funding_id: p.funding_id,
+            student_id: p.student_id,
+            amount: p.amount,
+            timestamp: p.timestamp,
+            student_name: p.market_student?.name || 'Unknown',
+        }));
+
+        return { funding, participations: transformedParts };
+    },
+
+    // Participate in funding
+    participateFunding: async (student_id: number, funding_id: number, amount: number): Promise<{ status: string; message: string; student: Student }> => {
+        const { data, error } = await supabase.rpc('participate_funding', {
+            p_student_id: student_id,
+            p_funding_id: funding_id,
+            p_amount: amount
+        });
+
+        if (error) {
+            throw new Error(error.message || '참여 과정에서 오류가 발생했습니다.');
+        }
+
+        return {
+            status: 'success',
+            message: '성공적으로 펀딩에 참여했습니다!',
             student: data as Student,
         };
     },

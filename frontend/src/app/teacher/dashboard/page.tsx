@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { isAuthenticated, logout } from "@/lib/teacherAuth";
-import { LogOut, Users, Package, ShoppingBag, Loader2 } from "lucide-react";
+import { LogOut, Users, Package, ShoppingBag, Loader2, Target } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface GradeStats {
@@ -235,6 +235,19 @@ export default function TeacherDashboardPage() {
                             <p className="text-sm text-gray-500">학생 화면 확인</p>
                         </div>
                     </a>
+
+                    <Link
+                        href="/teacher/funding"
+                        className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow flex items-center gap-4 border-2 border-transparent hover:border-pink-200"
+                    >
+                        <div className="p-3 bg-pink-100 rounded-lg">
+                            <Target className="w-6 h-6 text-pink-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold">공동 펀딩 관리</h3>
+                            <p className="text-sm text-gray-500">통합 모금 만들기</p>
+                        </div>
+                    </Link>
                 </div>
             </main>
         </div>
