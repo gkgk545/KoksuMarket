@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { api, Funding, Student } from "@/lib/api";
 import { Loader2, Users, Target, CheckCircle2, Heart } from "lucide-react";
 import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
 
 export default function FundingPage() {
     const [fundings, setFundings] = useState<Funding[]>([]);
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [participatingFunding, setParticipatingFunding] = useState<Funding | null>(null);
-    const [amount, setAmount] = useState<number>(1);
+    const [amount, setAmount] = useState<number | string>(1);
     const [submitting, setSubmitting] = useState(false);
 
     const loadFundings = () => {
@@ -35,19 +36,20 @@ export default function FundingPage() {
     const handleParticipate = async () => {
         if (!user || !participatingFunding) return;
         
-        if (amount <= 0) {
+        const parsedAmount = Number(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
             alert("1장 이상의 티켓을 입력해주세요.");
             return;
         }
 
-        if (user.ticket_count < amount) {
+        if (user.ticket_count < parsedAmount) {
             alert("보유한 티켓이 부족합니다.");
             return;
         }
 
         setSubmitting(true);
         try {
-            await api.participateFunding(user.id, participatingFunding.id, amount);
+            await api.participateFunding(user.id, participatingFunding.id, parsedAmount);
             alert("펀딩에 성공적으로 참여했습니다!");
             
             // Refresh logic
@@ -149,8 +151,8 @@ export default function FundingPage() {
             )}
 
             {/* Participation Modal */}
-            {participatingFunding && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            {participatingFunding && createPortal(
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4">
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -173,7 +175,7 @@ export default function FundingPage() {
                                 min="1"
                                 max={user?.ticket_count}
                                 value={amount}
-                                onChange={(e) => setAmount(Number(e.target.value))}
+                                onChange={(e) => setAmount(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 outline-none text-lg text-center"
                             />
                         </div>
@@ -186,7 +188,7 @@ export default function FundingPage() {
                                 취소
                             </button>
                             <button
-                                disabled={submitting || amount <= 0 || (user ? user.ticket_count < amount : true)}
+                                disabled={submitting || Number(amount) <= 0 || isNaN(Number(amount)) || (user ? user.ticket_count < Number(amount) : true)}
                                 onClick={handleParticipate}
                                 className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 flex justify-center items-center"
                             >
@@ -194,7 +196,8 @@ export default function FundingPage() {
                             </button>
                         </div>
                     </motion.div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
