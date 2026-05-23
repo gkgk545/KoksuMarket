@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabase, Student } from "@/lib/supabase";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
-import { ArrowLeft, Plus, Minus, Save, Trash2, UserPlus, Loader2, Upload, Download, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Save, Trash2, UserPlus, Loader2, Upload, Download, Check, X, KeyRound } from "lucide-react";
 import { motion } from "framer-motion";
 export default function GradeStudentsPage() {
     const router = useRouter();
@@ -26,6 +26,11 @@ export default function GradeStudentsPage() {
     const [bulkTicketAmount, setBulkTicketAmount] = useState(0);
     const [bulkTicketAction, setBulkTicketAction] = useState<"add" | "subtract">("add");
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Password change
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordTarget, setPasswordTarget] = useState<{ id: number; name: string } | null>(null);
+    const [newPassword, setNewPassword] = useState("");
 
     const filteredStudents = students.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -106,6 +111,35 @@ export default function GradeStudentsPage() {
             alert("삭제 실패: " + error.message);
         } else {
             loadStudents();
+        }
+    };
+
+    // Password change
+    const openPasswordModal = (studentId: number, studentName: string) => {
+        setPasswordTarget({ id: studentId, name: studentName });
+        setNewPassword("");
+        setShowPasswordModal(true);
+    };
+
+    const changePassword = async () => {
+        if (!passwordTarget) return;
+        if (!newPassword.trim()) {
+            alert("새 비밀번호를 입력해주세요.");
+            return;
+        }
+
+        const { error } = await supabase
+            .from("market_student")
+            .update({ password: newPassword.trim() })
+            .eq("id", passwordTarget.id);
+
+        if (error) {
+            alert("비밀번호 변경 실패: " + error.message);
+        } else {
+            alert(`${passwordTarget.name} 학생의 비밀번호가 변경되었습니다.`);
+            setShowPasswordModal(false);
+            setPasswordTarget(null);
+            setNewPassword("");
         }
     };
 
@@ -349,6 +383,7 @@ export default function GradeStudentsPage() {
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">이름</th>
                                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">티켓 보유량</th>
+                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">비밀번호</th>
                                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">작업</th>
                                 </tr>
                             </thead>
@@ -406,6 +441,16 @@ export default function GradeStudentsPage() {
                                                     {student.ticket_count} 장
                                                 </span>
                                             )}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <button
+                                                onClick={() => openPasswordModal(student.id, student.name)}
+                                                className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-700 p-1 text-xs"
+                                                title="비밀번호 변경"
+                                            >
+                                                <KeyRound className="w-4 h-4" />
+                                                <span>변경</span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <button
@@ -533,6 +578,50 @@ export default function GradeStudentsPage() {
                                 className={`flex-1 py-2 text-white rounded-lg ${bulkTicketAction === "add" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
                             >
                                 {bulkTicketAction === "add" ? "부여하기" : "회수하기"}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Password Change Modal */}
+            {showPasswordModal && passwordTarget && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
+                    >
+                        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                            <KeyRound className="w-5 h-5 text-indigo-600" />
+                            비밀번호 변경
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-4">
+                            <span className="font-semibold text-gray-700">{passwordTarget.name}</span> 학생의 비밀번호를 변경합니다.
+                        </p>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                            <input
+                                type="text"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                placeholder="새 비밀번호 입력"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => { setShowPasswordModal(false); setPasswordTarget(null); }}
+                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={changePassword}
+                                className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                            >
+                                변경하기
                             </button>
                         </div>
                     </motion.div>

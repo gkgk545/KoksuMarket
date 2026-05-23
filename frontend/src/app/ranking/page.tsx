@@ -8,7 +8,7 @@ import Link from "next/link";
 
 interface RankingItem {
     id: number;
-    masked_name: string;
+    name: string;
     grade: number;
     current_tickets: number;
     total_spent: number;
@@ -211,7 +211,7 @@ export default function RankingPage() {
                                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-slate-300 flex items-center justify-center shadow-lg mb-2 relative">
                                     <Medal className="w-8 h-8 text-slate-400" />
                                 </div>
-                                <span className="font-bold text-sm">{sortedRankings[1].masked_name}</span>
+                                <span className="font-bold text-sm">{sortedRankings[1].name}</span>
                                 <span className="text-xs text-gray-400 mb-2">{sortedRankings[1].grade}학년</span>
                                 <div className="w-full bg-gradient-to-t from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 h-28 rounded-t-2xl flex flex-col items-center justify-center p-2 shadow-inner">
                                     <span className="font-extrabold text-slate-500 text-lg">2등</span>
@@ -233,7 +233,7 @@ export default function RankingPage() {
                                     <Trophy className="w-10 h-10 text-yellow-500" />
                                     <span className="absolute -top-3 text-2xl">👑</span>
                                 </div>
-                                <span className="font-extrabold text-base">{sortedRankings[0].masked_name}</span>
+                                <span className="font-extrabold text-base">{sortedRankings[0].name}</span>
                                 <span className="text-xs text-gray-400 mb-2">{sortedRankings[0].grade}학년</span>
                                 <div className="w-full bg-gradient-to-t from-yellow-100 to-yellow-50 dark:from-amber-950/40 dark:to-amber-900/20 h-36 rounded-t-2xl flex flex-col items-center justify-center p-2 shadow-lg border-t-2 border-yellow-300">
                                     <span className="font-black text-yellow-600 dark:text-yellow-400 text-xl">1등</span>
@@ -255,7 +255,7 @@ export default function RankingPage() {
                                 <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-slate-800 border-4 border-amber-500/50 flex items-center justify-center shadow-lg mb-2 relative">
                                     <Medal className="w-8 h-8 text-amber-600" />
                                 </div>
-                                <span className="font-bold text-sm">{sortedRankings[2].masked_name}</span>
+                                <span className="font-bold text-sm">{sortedRankings[2].name}</span>
                                 <span className="text-xs text-gray-400 mb-2">{sortedRankings[2].grade}학년</span>
                                 <div className="w-full bg-gradient-to-t from-amber-100/80 to-amber-50/50 dark:from-slate-800 dark:to-slate-700 h-24 rounded-t-2xl flex flex-col items-center justify-center p-2 shadow-inner">
                                     <span className="font-extrabold text-amber-700 dark:text-amber-500 text-lg">3등</span>
@@ -274,7 +274,7 @@ export default function RankingPage() {
                         <h3 className="font-bold text-lg flex items-center gap-2">
                             <span>{getTabTitle()}</span>
                         </h3>
-                        <span className="text-xs text-gray-400">학생들의 이름은 마스킹(*) 처리됩니다.</span>
+                        <span className="text-xs text-gray-400">전체 학년 통합 랭킹</span>
                     </div>
 
                     <div className="divide-y dark:divide-slate-800">
@@ -300,7 +300,7 @@ export default function RankingPage() {
                                                 {getRankIcon(actualRank)}
                                             </div>
                                             <div>
-                                                <span className="font-bold">{item.masked_name}</span>
+                                                <span className="font-bold">{item.name}</span>
                                                 {isCurrentUser && (
                                                     <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] rounded-full font-bold">
                                                         나
@@ -340,7 +340,7 @@ export default function RankingPage() {
                                 {userRankInfo.rank}
                             </div>
                             <div>
-                                <span className="font-extrabold text-base">{userRankInfo.item.masked_name} (나)</span>
+                                <span className="font-extrabold text-base">{userRankInfo.item.name} (나)</span>
                                 <p className="text-[10px] opacity-80">{userRankInfo.item.grade}학년</p>
                             </div>
                         </div>

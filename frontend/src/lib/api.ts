@@ -226,7 +226,7 @@ export const api = {
     },
 
     // Get student rankings from rankings view
-    getStudentRankings: async (): Promise<{ id: number; masked_name: string; grade: number; current_tickets: number; total_spent: number; total_funded: number; total_tickets: number }[]> => {
+    getStudentRankings: async (): Promise<{ id: number; name: string; grade: number; current_tickets: number; total_spent: number; total_funded: number; total_tickets: number }[]> => {
         const { data, error } = await supabase
             .from('student_rankings')
             .select('*');

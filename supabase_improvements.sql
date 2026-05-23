@@ -126,19 +126,13 @@ END;
 $$;
 
 
--- 4. 랭킹 집계용 데이터베이스 뷰 (프라이버시 마스킹 처리 포함)
+-- 4. 랭킹 집계용 데이터베이스 뷰
 DROP VIEW IF EXISTS student_rankings;
 
 CREATE VIEW student_rankings AS
 SELECT 
     s.id,
-    CASE 
-        WHEN char_length(s.name) >= 3 THEN 
-            overlay(s.name placing '*' from 2 for 1)
-        WHEN char_length(s.name) = 2 THEN 
-            overlay(s.name placing '*' from 2 for 1)
-        ELSE s.name
-    END AS masked_name,
+    s.name,
     s.grade,
     s.ticket_count as current_tickets,
     -- 누적 소비 티켓량 (구매한 아이템 가격 합산)
