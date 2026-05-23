@@ -82,36 +82,11 @@ export default function PurchasesPage() {
         if (!confirm(`정말 ${purchase.student?.name}의 "${purchase.item?.name}" 구매를 취소하시겠습니까?\n학생 티켓과 상품 수량이 복구됩니다.`)) return;
 
         try {
-            // 1. 학생 티켓 복구
-            const { data: studentData } = await supabase
-                .from("market_student")
-                .select("ticket_count")
-                .eq("id", purchase.student_id)
-                .single();
+            const { error } = await supabase.rpc("cancel_purchase_rpc", {
+                p_purchase_id: purchase.id
+            });
 
-            if (studentData) {
-                await supabase
-                    .from("market_student")
-                    .update({ ticket_count: studentData.ticket_count + purchase.item.cost })
-                    .eq("id", purchase.student_id);
-            }
-
-            // 2. 상품 수량 복구
-            const { data: itemData } = await supabase
-                .from("market_item")
-                .select("quantity")
-                .eq("id", purchase.item_id)
-                .single();
-
-            if (itemData) {
-                await supabase
-                    .from("market_item")
-                    .update({ quantity: itemData.quantity + 1 })
-                    .eq("id", purchase.item_id);
-            }
-
-            // 3. 구매 기록 삭제
-            await supabase.from("market_purchase").delete().eq("id", purchase.id);
+            if (error) throw error;
 
             alert("구매가 취소되었습니다. 티켓과 수량이 복구되었습니다.");
             loadPurchases();

@@ -9,6 +9,7 @@ frontend/.next/
 frontend/out/
 frontend/build/
 frontend/.vercel
+frontend/.env.local
 
 # Backend
 backend/venv/

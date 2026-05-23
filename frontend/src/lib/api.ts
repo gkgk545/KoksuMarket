@@ -63,19 +63,18 @@ export const api = {
         return data || [];
     },
 
-    // Student login - simple password check
+    // Student login - verify password securely on database side via RPC
     login: async (student_id: number, password: string): Promise<{ status: string; student: Student }> => {
-        const { data, error } = await supabase
-            .from('market_student')
-            .select('id, name, grade, ticket_count, password')
-            .eq('id', student_id)
-            .single();
+        const { data, error } = await supabase.rpc('verify_student_login', {
+            p_student_id: student_id,
+            p_password: password
+        });
 
-        if (error) throw new Error('학생을 찾을 수 없습니다.');
-        if (data.password !== password) throw new Error('비밀번호가 틀렸습니다.');
+        if (error || !data || data.length === 0) {
+            throw new Error('학생을 찾을 수 없거나 비밀번호가 틀렸습니다.');
+        }
 
-        // Remove password from returned data
-        const { password: _, ...student } = data;
+        const student = data[0];
         return { status: 'success', student };
     },
 
@@ -210,5 +209,29 @@ export const api = {
             message: '성공적으로 펀딩에 참여했습니다!',
             student: data as Student,
         };
+    },
+
+    // Purchase multiple items atomically - using Supabase RPC
+    purchaseCartItems: async (student_id: number, items: { id: number; quantity: number; cost: number }[]): Promise<{ status: string; remaining_tickets: number; student: Student }> => {
+        const { data, error } = await supabase.rpc('purchase_cart_items', {
+            p_student_id: student_id,
+            p_items: items
+        });
+
+        if (error) {
+            throw new Error(error.message || '구매 과정에서 오류가 발생했습니다.');
+        }
+
+        return data;
+    },
+
+    // Get student rankings from rankings view
+    getStudentRankings: async (): Promise<{ id: number; masked_name: string; grade: number; current_tickets: number; total_spent: number; total_funded: number; total_tickets: number }[]> => {
+        const { data, error } = await supabase
+            .from('student_rankings')
+            .select('*');
+
+        if (error) throw new Error(error.message);
+        return data || [];
     },
 };

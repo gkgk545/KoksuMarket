@@ -25,6 +25,11 @@ export default function GradeStudentsPage() {
     const [showBulkTicketModal, setShowBulkTicketModal] = useState(false);
     const [bulkTicketAmount, setBulkTicketAmount] = useState(0);
     const [bulkTicketAction, setBulkTicketAction] = useState<"add" | "subtract">("add");
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredStudents = students.filter(s =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -309,9 +314,25 @@ export default function GradeStudentsPage() {
             </header>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {students.length > 0 && (
+                    <div className="mb-6">
+                        <input
+                            type="text"
+                            placeholder="학생 이름으로 검색..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                        />
+                    </div>
+                )}
+
                 {students.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                         등록된 학생이 없습니다.
+                    </div>
+                ) : filteredStudents.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-sm">
+                        검색 결과가 없습니다.
                     </div>
                 ) : (
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -332,7 +353,7 @@ export default function GradeStudentsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {students.map((student, index) => (
+                                {filteredStudents.map((student, index) => (
                                     <motion.tr
                                         key={student.id}
                                         initial={{ opacity: 0, y: 10 }}

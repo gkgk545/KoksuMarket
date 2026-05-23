@@ -210,8 +210,11 @@ export default function LoginPage() {
 
       </motion.div>
 
-      {/* Teacher Link */}
+      {/* Footer Links */}
       <div className="absolute bottom-6 flex gap-6 text-sm text-gray-500 font-medium">
+        <a href="/ranking" className="hover:text-amber-500 transition-colors flex items-center gap-1">
+          🏆 마켓 랭킹 <ChevronRight className="w-3 h-3" />
+        </a>
         <a href="/teacher" className="hover:text-purple-600 transition-colors flex items-center gap-1">
           교사 페이지 <ChevronRight className="w-3 h-3" />
         </a>

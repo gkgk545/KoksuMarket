@@ -1,13 +1,22 @@
 "use client";
 
-const TEACHER_PASSWORD = "teacher2026";
+import { supabase } from "./supabase";
+
 const AUTH_KEY = "teacherAuth";
 const EXPIRY_KEY = "teacherAuthExpiry";
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export function login(password: string, rememberMe: boolean = false): boolean {
-    if (password === TEACHER_PASSWORD) {
-        localStorage.setItem(AUTH_KEY, "true");
+export async function login(password: string, rememberMe: boolean = false): Promise<boolean> {
+    try {
+        const { data, error } = await supabase.rpc("verify_teacher_login", {
+            p_password: password
+        });
+
+        if (error || !data || data.status !== "success") {
+            return false;
+        }
+
+        localStorage.setItem(AUTH_KEY, data.token || "true");
         if (rememberMe) {
             const expiryTime = Date.now() + SESSION_DURATION;
             localStorage.setItem(EXPIRY_KEY, expiryTime.toString());
@@ -15,8 +24,10 @@ export function login(password: string, rememberMe: boolean = false): boolean {
             localStorage.removeItem(EXPIRY_KEY);
         }
         return true;
+    } catch (e) {
+        console.error("Teacher login error:", e);
+        return false;
     }
-    return false;
 }
 
 export function isAuthenticated(): boolean {

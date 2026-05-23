@@ -24,7 +24,8 @@ export default function TeacherLoginPage() {
         setLoading(true);
         setError("");
 
-        if (login(password, rememberMe)) {
+        const success = await login(password, rememberMe);
+        if (success) {
             router.push("/teacher/dashboard");
         } else {
             setError("비밀번호가 틀렸습니다.");

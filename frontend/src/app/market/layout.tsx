@@ -26,6 +26,9 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                         <Link href="/market/funding" className="hover:text-pink-600 transition-colors flex items-center gap-1">
                             공동 펀딩
                         </Link>
+                        <Link href="/ranking" className="hover:text-amber-500 transition-colors flex items-center gap-1">
+                            🏆 마켓 랭킹
+                        </Link>
                     </nav>
                 </div>
 
@@ -121,6 +124,84 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
         }
     }, [router]);
 
+    // Canvas Confetti Effect
+    useEffect(() => {
+        const handleConfetti = () => {
+            const canvas = document.getElementById("confetti-canvas") as HTMLCanvasElement;
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles: any[] = [];
+            const colors = ["#a855f7", "#ec4899", "#3b82f6", "#eab308", "#10b981", "#ff4500", "#ff69b4"];
+
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * -canvas.height - 20,
+                    size: Math.random() * 8 + 6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speedX: Math.random() * 6 - 3,
+                    speedY: Math.random() * 5 + 4,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: Math.random() * 4 - 2
+                });
+            }
+
+            let animationFrameId: number;
+            const startTime = Date.now();
+
+            const draw = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                let hasParticlesLeft = false;
+                particles.forEach((p) => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.rotation += p.rotationSpeed;
+
+                    if (p.y < canvas.height) {
+                        hasParticlesLeft = true;
+                    }
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (hasParticlesLeft && Date.now() - startTime < 4000) {
+                    animationFrameId = requestAnimationFrame(draw);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            };
+
+            draw();
+
+            const handleResize = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            };
+            window.addEventListener("resize", handleResize);
+
+            return () => {
+                cancelAnimationFrame(animationFrameId);
+                window.removeEventListener("resize", handleResize);
+            };
+        };
+
+        window.addEventListener("confetti_celebrate", handleConfetti);
+        return () => {
+            window.removeEventListener("confetti_celebrate", handleConfetti);
+        };
+    }, []);
+
     const handleLogout = () => {
         localStorage.removeItem("user");
         router.push("/");
@@ -139,6 +220,7 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
     return (
         <CartProvider>
             <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100">
+                <canvas id="confetti-canvas" className="fixed inset-0 pointer-events-none z-[100] w-full h-full" />
                 <MarketHeader user={user} onLogout={handleLogout} onRefresh={refreshUser} />
                 <main className="container mx-auto p-4 md:p-8 animate-fade-in-up">
                     {children}

@@ -45,7 +45,7 @@ export default function TeacherDashboardPage() {
                 statsMap.set(grade, { grade, studentCount: 0, totalTickets: 0 });
             });
 
-            students?.forEach(s => {
+            students?.forEach((s: any) => {
                 const stat = statsMap.get(s.grade);
                 if (stat) {
                     stat.studentCount++;
