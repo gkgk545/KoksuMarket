@@ -16,7 +16,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY 
-    SELECT s.id, s.name, s.grade, s.ticket_count
+    SELECT s.id::bigint, s.name::text, s.grade::integer, s.ticket_count::integer
     FROM market_student s
     WHERE s.id = p_student_id AND s.password = p_password;
 END;

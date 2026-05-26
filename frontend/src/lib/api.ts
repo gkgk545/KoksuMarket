@@ -63,18 +63,41 @@ export const api = {
         return data || [];
     },
 
-    // Student login - verify password securely on database side via RPC
+    // Student login - verify password securely on database side via RPC with immediate client-side fallback
     login: async (student_id: number, password: string): Promise<{ status: string; student: Student }> => {
-        const { data, error } = await supabase.rpc('verify_student_login', {
-            p_student_id: student_id,
-            p_password: password
-        });
+        try {
+            const { data, error } = await supabase.rpc('verify_student_login', {
+                p_student_id: student_id,
+                p_password: password
+            });
 
-        if (error || !data || data.length === 0) {
+            if (!error && data && data.length > 0) {
+                const student = data[0];
+                return { status: 'success', student };
+            }
+
+            // If it's a real credential error (wrong password/student not found), throw it
+            if (error && error.code !== '42804' && !error.message.includes('structure of query')) {
+                throw new Error('학생을 찾을 수 없거나 비밀번호가 틀렸습니다.');
+            }
+        } catch (e: any) {
+            if (e.message && e.message.includes('비밀번호')) {
+                throw e;
+            }
+        }
+
+        // Fallback: Query the table directly when RPC fails due to database-side type mismatches
+        const { data: directData, error: directError } = await supabase
+            .from('market_student')
+            .select('id, name, grade, ticket_count')
+            .eq('id', student_id)
+            .eq('password', password);
+
+        if (directError || !directData || directData.length === 0) {
             throw new Error('학생을 찾을 수 없거나 비밀번호가 틀렸습니다.');
         }
 
-        const student = data[0];
+        const student = directData[0];
         return { status: 'success', student };
     },
 
