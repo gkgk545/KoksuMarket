@@ -204,3 +204,24 @@ ALTER TABLE market_purchase DISABLE ROW LEVEL SECURITY;
 ALTER TABLE market_funding DISABLE ROW LEVEL SECURITY;
 ALTER TABLE market_funding_participation DISABLE ROW LEVEL SECURITY;
 
+-- ==========================================
+-- 7. Supabase Data API 접근을 위한 명시적 권한(GRANT) 설정 (2026년 보안 정책 대비)
+-- ==========================================
+-- 핵심 테이블 권한 부여
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_student TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_item TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_purchase TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_teacher_auth TO anon, authenticated, service_role;
+
+-- 랭킹 집계 뷰 권한 부여
+GRANT SELECT ON TABLE student_rankings TO anon, authenticated, service_role;
+
+-- 시퀀스 권한 부여 (ID 자동 증가 및 기본값 생성을 위해 필요)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+-- RPC 함수 실행 권한 부여
+GRANT EXECUTE ON FUNCTION verify_student_login(INT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION purchase_cart_items(INT, jsonb) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION cancel_purchase_rpc(INT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION verify_teacher_login(TEXT) TO anon, authenticated, service_role;
+

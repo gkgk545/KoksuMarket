@@ -71,3 +71,15 @@ BEGIN
     RETURN row_to_json(v_student);
 END;
 $$;
+
+-- 4. Supabase Data API 접근을 위한 명시적 권한(GRANT) 설정 (2026년 보안 정책 대비)
+-- 테이블 권한 부여
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_funding TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE market_funding_participation TO anon, authenticated, service_role;
+
+-- 시퀀스 권한 부여 (SERIAL 기본값 생성을 위해 필요)
+GRANT USAGE, SELECT ON SEQUENCE market_funding_id_seq TO anon, authenticated, service_role;
+GRANT USAGE, SELECT ON SEQUENCE market_funding_participation_id_seq TO anon, authenticated, service_role;
+
+-- RPC 함수 실행 권한 부여
+GRANT EXECUTE ON FUNCTION participate_funding(INT, INT, INT) TO anon, authenticated, service_role;
