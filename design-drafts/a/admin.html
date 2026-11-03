@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>곡수마켓 교사 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#E3E6DE; --ground-2:#D6DACF;
+  --paper:#FCFBF7; --paper-2:#F2F0E9;
+  --ink:#1C2130; --ink-2:#464D5E; --ink-3:#646A79;
+  --rule:#C5C8BE; --rule-2:#E5E3DB;
+  --ticket:#F4C430; --ticket-ink:#2A2100;
+  --stamp:#C3352B; --stamp-bg:#FBEAE7;
+  --done:#1F4F99; --done-bg:#E6EDF7;
+  --r:6px;
+  --display:"Black Han Sans","Gothic A1",sans-serif;
+  --ui:"Gothic A1",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;word-break:keep-all;overflow-wrap:break-word}
+body{margin:0;background:var(--ground);color:var(--ink);font:500 15px/1.5 var(--ui);font-variant-numeric:tabular-nums;caret-color:var(--ink);scrollbar-color:var(--ink-3) var(--ground-2);overflow-x:hidden}
+::selection{background:var(--ticket);color:var(--ticket-ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px;border-radius:4px}
+button{font:inherit;color:inherit}
+a{color:inherit}
+svg.i{width:18px;height:18px;flex:none}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+
+.top{
+  background:var(--ticket);color:var(--ticket-ink);padding-bottom:5px;
+  -webkit-mask:radial-gradient(circle 4px at 8px 100%,#0000 3.6px,#000 4px) 0 0/16px 100% repeat-x;
+  mask:radial-gradient(circle 4px at 8px 100%,#0000 3.6px,#000 4px) 0 0/16px 100% repeat-x;
+}
+.top-in{display:flex;align-items:center;gap:14px;min-height:60px;flex-wrap:wrap}
+.logo{font:400 24px/1 var(--display);text-decoration:none;white-space:nowrap}
+.role{font-weight:800;font-size:15px;padding-left:14px;border-left:1.5px solid rgba(42,33,0,.35);white-space:nowrap}
+.date{margin-left:auto;font-weight:700;opacity:.85;white-space:nowrap}
+.hbtn{height:40px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:0;border-radius:var(--r);background:transparent;font-weight:700;text-decoration:none;cursor:pointer;color:var(--ticket-ink);white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,.35)}
+
+/* summary: one ticket, three fields */
+.summary{
+  margin-top:28px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--paper);border-radius:8px;
+  box-shadow:0 0 0 1px rgba(28,33,48,.14),0 2px 6px rgba(28,33,48,.06);
+}
+.summary > div{padding:18px 24px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;position:relative;min-width:0}
+.summary > div+div::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;border-left:2px dashed var(--rule)}
+.summary dt{font-weight:700;color:var(--ink-2)}
+.summary dd{margin:0;white-space:nowrap}
+.summary dd b{font:400 32px/1 var(--display)}
+.summary dd span{font-weight:700;margin-left:2px}
+.summary .pend dd{color:var(--stamp)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:24px;margin:24px 0 56px;align-items:start}
+.panel{background:var(--paper);border-radius:8px;box-shadow:0 0 0 1px rgba(28,33,48,.14),0 2px 6px rgba(28,33,48,.06)}
+.p-head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1.5px solid var(--rule-2);flex-wrap:wrap}
+.p-head h2{margin:0;font:800 18px/1.3 var(--ui);letter-spacing:-.01em}
+.p-head h2 em{font-style:normal;color:var(--stamp);margin-left:6px}
+.p-head .sub{color:var(--ink-3);font-size:14px}
+.seg{margin-left:auto;display:flex;background:var(--paper-2);border-radius:var(--r);padding:3px;gap:2px}
+.seg button{height:34px;min-width:44px;padding:0 10px;border:0;border-radius:4px;background:none;font-weight:700;font-size:14px;color:var(--ink-2);cursor:pointer}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba(28,33,48,.08)}
+
+.queue{list-style:none;margin:0;padding:0}
+.q{display:grid;grid-template-columns:72px minmax(0,1fr) auto 128px;align-items:center;gap:14px;padding:12px 20px;min-height:68px;position:relative}
+.q+.q{border-top:1px solid var(--rule-2)}
+.q .t{font-size:13px;color:var(--ink-3);line-height:1.35}
+.q .who{font-weight:800;font-size:16px;line-height:1.3}
+.q .who span{font-weight:500;color:var(--ink-2);margin-right:6px}
+.q .what{color:var(--ink-2);font-size:14px;margin-top:1px}
+.q .cost{font:400 20px/1 var(--display);white-space:nowrap;text-align:right}
+.q .cost small{font:700 13px/1 var(--ui);margin-left:1px}
+.q .act{display:flex;justify-content:flex-end}
+.btn{height:40px;padding:0 14px;border:0;border-radius:var(--r);background:var(--ink);color:var(--paper);font:800 14px/1 var(--ui);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background-color .15s}
+.btn:hover{background:#000}
+.btn svg{width:16px;height:16px}
+.q.done .who,.q.done .what,.q.done .cost{color:var(--ink-3)}
+.q.done .who span{color:var(--ink-3)}
+.mark{
+  display:inline-block;font:400 15px/1 var(--display);color:var(--done);letter-spacing:.04em;
+  border:2px solid var(--done);border-radius:4px;padding:6px 8px 5px;transform:rotate(-4deg);white-space:nowrap;
+  animation:press .26s cubic-bezier(.2,1.4,.4,1) both;
+}
+@keyframes press{from{opacity:0;transform:rotate(-4deg) scale(1.5)}to{opacity:1;transform:rotate(-4deg) scale(1)}}
+.undo{background:none;border:0;color:var(--ink-2);font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 4px;margin-left:4px}
+.q.done .act{gap:2px;align-items:center}
+.q-empty{padding:36px 20px;text-align:center}
+.q-empty b{display:block;font-size:16px;margin-bottom:4px}
+.q-empty p{margin:0;color:var(--ink-2)}
+.p-foot{padding:12px 20px;border-top:1.5px solid var(--rule-2);display:flex;justify-content:flex-end}
+.link{display:inline-flex;align-items:center;gap:4px;font-weight:700;text-decoration:none;color:var(--ink);padding:6px 4px;border-radius:4px}
+.link:hover{text-decoration:underline;text-underline-offset:3px}
+
+.side{display:flex;flex-direction:column;gap:24px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:0 20px;height:52px;text-align:right;white-space:nowrap}
+th{font-size:13px;font-weight:700;color:var(--ink-3);height:40px;border-bottom:1px solid var(--rule-2)}
+th:first-child,td:first-child{text-align:left}
+td{border-bottom:1px solid var(--rule-2)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer;transition:background-color .12s}
+tbody tr:hover{background:var(--paper-2)}
+td a{font:400 19px/1 var(--display);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+td a:hover{text-decoration:underline;text-underline-offset:4px}
+td b{font-weight:800}
+td .u{color:var(--ink-3);font-size:13px;margin-left:1px}
+tfoot td{border-top:1.5px solid var(--rule);border-bottom:0;height:46px;color:var(--ink-2);font-weight:700}
+
+.menu{list-style:none;margin:0;padding:6px 0}
+.menu a{display:flex;align-items:center;gap:12px;padding:12px 20px;text-decoration:none;min-height:60px}
+.menu a:hover{background:var(--paper-2)}
+.menu .m-t{font-weight:800;font-size:16px;display:block}
+.menu .m-d{font-size:13px;color:var(--ink-3);display:block}
+.menu .badge{margin-left:auto;font-size:13px;font-weight:800;color:var(--stamp);white-space:nowrap}
+.menu svg{margin-left:auto;color:var(--ink-3)}
+.menu .badge+svg{margin-left:0}
+.menu li+li a{border-top:1px solid var(--rule-2)}
+
+@media (max-width:960px){
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .role{display:none}
+  .date{font-size:13px}
+  .summary{grid-template-columns:1fr}
+  .summary > div{padding:12px 18px}
+  .summary > div+div::before{left:14px;right:14px;top:-1px;bottom:auto;border-left:0;border-top:2px dashed var(--rule)}
+  .summary dd b{font-size:26px}
+  .p-head{padding:14px 16px}
+  .seg{margin-left:0;width:100%}.seg button{flex:1}
+  .q{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 16px}
+  .q .t{grid-column:1/-1;order:-1}
+  .q .act{grid-column:1/-1;justify-content:stretch}
+  .q:not(.done) .act .btn{width:100%;justify-content:center;height:44px}
+  th,td{padding:0 14px}
+  .menu a{padding:12px 16px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-out" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/></g></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="logo" href="#">곡수마켓</a>
+    <span class="role">교사 대시보드</span>
+    <span class="date">11월 3일 (화)</span>
+    <a class="hbtn" href="main.html"><svg class="i"><use href="#i-out"/></svg>로그아웃</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <dl class="summary" aria-label="오늘의 현황">
+    <div><dt>총 학생 수</dt><dd><b id="s-stu">97</b><span>명</span></dd></div>
+    <div><dt>총 구매 건수</dt><dd><b>263</b><span>건</span></dd></div>
+    <div class="pend"><dt>전달 대기</dt><dd><b id="s-pend">7</b><span>건</span></dd></div>
+  </dl>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="q-t">
+      <div class="p-head">
+        <h2 id="q-t">전달할 물건<em id="q-n">7건</em></h2>
+        <div class="seg" role="group" aria-label="학년으로 거르기">
+          <button type="button" data-g="0" aria-pressed="true">전체</button>
+          <button type="button" data-g="3" aria-pressed="false">3학년</button>
+          <button type="button" data-g="4" aria-pressed="false">4학년</button>
+          <button type="button" data-g="5" aria-pressed="false">5학년</button>
+          <button type="button" data-g="6" aria-pressed="false">6학년</button>
+        </div>
+      </div>
+      <ul class="queue" id="queue" aria-live="polite"></ul>
+      <div class="p-foot"><a class="link" href="#purchases">구매 내역 전체 보기<svg class="i"><use href="#i-next"/></svg></a></div>
+    </section>
+
+    <div class="side">
+      <section class="panel" aria-labelledby="g-t">
+        <div class="p-head"><h2 id="g-t">학년별 현황</h2><span class="sub">행을 누르면 학생 목록</span></div>
+        <table>
+          <thead><tr><th scope="col">학년</th><th scope="col">학생 수</th><th scope="col">총 티켓</th><th scope="col">1인 평균</th></tr></thead>
+          <tbody id="grades"></tbody>
+          <tfoot><tr><td>합계</td><td id="t-stu"></td><td id="t-tk"></td><td></td></tr></tfoot>
+        </table>
+      </section>
+
+      <section class="panel" aria-labelledby="m-t">
+        <div class="p-head"><h2 id="m-t">빠른 메뉴</h2></div>
+        <ul class="menu">
+          <li><a href="#purchases"><span><span class="m-t">구매 내역 관리</span><span class="m-d">전달 상태 변경</span></span><span class="badge" id="m-pend">대기 7건</span><svg class="i"><use href="#i-next"/></svg></a></li>
+          <li><a href="#items"><span><span class="m-t">상품 관리</span><span class="m-d">상품 추가·수정·삭제</span></span><svg class="i"><use href="#i-next"/></svg></a></li>
+          <li><a href="student.html"><span><span class="m-t">학생 페이지</span><span class="m-d">학생 화면 확인</span></span><svg class="i"><use href="#i-next"/></svg></a></li>
+          <li><a href="#funding"><span><span class="m-t">공동 펀딩 관리</span><span class="m-d">통합 모금 만들기</span></span><svg class="i"><use href="#i-next"/></svg></a></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  var grades=[{g:3,n:22,t:186},{g:4,n:24,t:241},{g:5,n:26,t:318},{g:6,n:25,t:402}];
+  var q=[
+    {id:1,t:"오늘 10:42",g:5,name:"김하늘",item:"연필 세트",q:1,c:3},
+    {id:2,t:"오늘 10:40",g:5,name:"김하늘",item:"캐릭터 스티커",q:2,c:4},
+    {id:3,t:"오늘 10:31",g:6,name:"송다인",item:"자리 바꾸기권",q:1,c:8},
+    {id:4,t:"오늘 09:58",g:3,name:"이서율",item:"간식 쿠폰",q:1,c:5},
+    {id:5,t:"오늘 09:15",g:4,name:"박소윤",item:"보드게임 30분 이용권",q:1,c:15},
+    {id:6,t:"어제 14:20",g:6,name:"이준서",item:"점심 노래 선곡권",q:1,c:6},
+    {id:7,t:"어제 13:05",g:3,name:"문하진",item:"캐릭터 스티커",q:3,c:6}
+  ];
+  var filter=0;
+  var $=function(id){return document.getElementById(id)};
+  var ic=function(n){return '<svg class="i" aria-hidden="true"><use href="#i-'+n+'"/></svg>'};
+
+  var sn=0,st=0;
+  $("grades").innerHTML=grades.map(function(r){sn+=r.n;st+=r.t;
+    return '<tr data-href="#students-'+r.g+'"><td><a href="#students-'+r.g+'">'+r.g+'학년</a></td><td><b>'+r.n+'</b><span class="u">명</span></td><td><b>'+r.t+'</b><span class="u">장</span></td><td>'+(r.t/r.n).toFixed(1)+'<span class="u">장</span></td></tr>';
+  }).join("");
+  $("t-stu").innerHTML="<b>"+sn+"</b><span class=\"u\">명</span>";$("t-tk").innerHTML="<b>"+st+"</b><span class=\"u\">장</span>";$("s-stu").textContent=sn;
+  $("grades").addEventListener("click",function(e){var tr=e.target.closest("tr");if(tr&&!e.target.closest("a"))location.hash=tr.dataset.href});
+
+  function render(){
+    var rows=q.filter(function(r){return !filter||r.g===filter});
+    var pend=q.filter(function(r){return !r.done}).length;
+    $("s-pend").textContent=pend;$("q-n").textContent=pend+"건";$("m-pend").textContent=pend?"대기 "+pend+"건":"";
+    if(!rows.length||(rows.every(function(r){return r.done})&&!rows.some(function(r){return r.justDone}))){
+      $("queue").innerHTML='<li class="q-empty"><b>'+(filter?filter+'학년은 ':'')+'전달할 물건이 없어요</b><p>학생이 새로 사면 여기에 바로 올라와요.</p></li>';return;
+    }
+    $("queue").innerHTML=rows.filter(function(r){return !r.done||r.justDone}).map(function(r){
+      return '<li class="q'+(r.done?' done':'')+'"><div class="t">'+r.t+'</div><div><div class="who"><span>'+r.g+'학년</span>'+r.name+'</div><div class="what">'+r.item+' × '+r.q+'</div></div><div class="cost">'+r.c+'<small>장</small></div><div class="act">'+
+      (r.done?'<span class="mark">전달 완료</span><button class="undo" type="button" data-undo="'+r.id+'">되돌리기</button>':'<button class="btn" type="button" data-done="'+r.id+'">'+ic("check")+'전달 완료</button>')+'</div></li>';
+    }).join("");
+  }
+  function find(id){return q.filter(function(r){return r.id==id})[0]}
+  document.addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b)return;
+    if(b.dataset.done){var r=find(b.dataset.done);r.done=true;r.justDone=true;render();var u=document.querySelector('[data-undo="'+r.id+'"]');if(u)u.focus()}
+    else if(b.dataset.undo){var r2=find(b.dataset.undo);r2.done=false;r2.justDone=false;render()}
+    else if(b.dataset.g!==undefined){
+      filter=+b.dataset.g;q.forEach(function(r){r.justDone=false});
+      document.querySelectorAll(".seg button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});render();
+    }
+  });
+  render();
+})();
+</script>
+</body>
+</html>

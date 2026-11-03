@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>곡수마켓 · 교사 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Gothic+A1:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1D2340; --ink-2:#4A5070; --ink-3:#6B7090;
+  --blue:#2A55E5; --blue-d:#1F43BF; --blue-l:#DCE5FC;
+  --yellow:#FFC83D; --yellow-l:#FFEFC4;
+  --tomato:#F26440; --tomato-d:#C4381B; --tomato-l:#FDE1D8;
+  --ground:#EDF1F7; --line:#C9D0DD; --card:#FFFFFF;
+  --display:"Bagel Fat One","Gothic A1",sans-serif;
+  --body:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --press:120ms cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0; font-family:var(--body); font-size:15px; color:var(--ink); background:var(--ground); line-height:1.5; caret-color:var(--blue); word-break:keep-all; overflow-wrap:anywhere; overflow-x:hidden}
+::selection{background:var(--yellow); color:var(--ink)}
+:focus-visible{outline:3px solid var(--blue); outline-offset:2px}
+.top :focus-visible{outline-color:var(--yellow)}
+button{font:inherit; color:inherit; cursor:pointer}
+a{color:inherit}
+.num{font-variant-numeric:tabular-nums}
+svg.i{width:20px; height:20px; flex:none}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:6px 14px;
+  background:#fff; color:var(--ink); border:2px solid var(--ink); border-radius:10px; box-shadow:2px 2px 0 var(--ink);
+  font-weight:800; font-size:.9rem; text-decoration:none; white-space:nowrap;
+  transition:transform var(--press), box-shadow var(--press), background var(--press);
+}
+.btn:hover{background:var(--yellow-l)}
+.btn:active{transform:translate(2px,2px); box-shadow:0 0 0 var(--ink)}
+.btn.primary{background:var(--blue); color:#fff}
+.btn.primary:hover{background:var(--blue-d)}
+.btn.quiet{box-shadow:none; border-color:var(--line)}
+.btn.quiet:hover{border-color:var(--ink); background:#fff}
+
+/* top bar */
+.top{background:var(--ink); color:#fff}
+.top-in{max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:14px}
+.brand{display:flex; align-items:baseline; gap:10px; text-decoration:none; color:#fff}
+.brand b{font:400 1.5rem/1 var(--display); color:var(--yellow)}
+.brand span{font-weight:800; font-size:.95rem; color:#C9D3F2}
+.top-in .sp{flex:1}
+.top-in time{font-size:.88rem; font-weight:600; color:#C9D3F2}
+.out{background:transparent; color:#fff; border-color:#8D95B8; box-shadow:none}
+.out:hover{background:#fff; color:var(--ink); border-color:#fff}
+
+.wrap{max-width:1280px; margin:0 auto; padding:24px 24px 64px}
+.head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px}
+.head h1{margin:0; font-size:1.5rem; font-weight:800; letter-spacing:-.01em}
+.head p{margin:0; color:var(--ink-2); font-weight:600; font-size:.9rem}
+
+/* summary strip */
+.summary{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0 0 24px; background:#fff; border:2px solid var(--ink); border-radius:14px; overflow:hidden; box-shadow:3px 3px 0 var(--ink)}
+.summary > div{padding:14px 20px; display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+.summary > div + div{border-left:2px solid var(--ink)}
+.summary dt{font-weight:800; color:var(--ink-2); font-size:.92rem}
+.summary dd{margin:0; font-size:1.65rem; font-weight:800; line-height:1.1}
+.summary dd small{font-size:.9rem; margin-left:2px; color:var(--ink-2)}
+.summary .hot{background:var(--yellow)}
+.summary .hot dt,.summary .hot dd small{color:var(--ink)}
+
+.cols{display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:24px; align-items:start}
+.panel{background:#fff; border:2px solid var(--ink); border-radius:14px; box-shadow:3px 3px 0 var(--ink)}
+.panel + .panel{margin-top:24px}
+.p-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 18px; border-bottom:2px solid var(--ink)}
+.p-head h2{margin:0; font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:8px}
+.pill{display:inline-grid; place-items:center; min-width:28px; height:24px; padding:0 8px; border-radius:999px; background:var(--yellow); border:2px solid var(--ink); font-size:.82rem; font-weight:800}
+
+/* filters */
+.filters{display:flex; gap:6px; flex-wrap:wrap; padding:12px 18px; border-bottom:1px solid var(--line); background:#F7F9FC}
+.chip{min-height:36px; padding:4px 12px; border-radius:999px; border:2px solid var(--line); background:#fff; font-weight:800; font-size:.85rem; color:var(--ink-2)}
+.chip:hover{border-color:var(--ink); color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:#fff}
+.chip .c{margin-left:4px; font-weight:600; opacity:.8}
+
+/* pending table */
+.tbl{width:100%; border-collapse:collapse}
+.tbl th{text-align:left; font-size:.8rem; font-weight:800; color:var(--ink-2); padding:10px 18px 8px; border-bottom:1px solid var(--line); white-space:nowrap}
+.tbl td{padding:12px 18px; border-bottom:1px solid var(--line); vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right}
+.stu b{display:block; font-weight:800}
+.stu span{font-size:.82rem; color:var(--ink-2); font-weight:600}
+.item{font-weight:600}
+.item em{font-style:normal; color:var(--ink-2); margin-left:4px}
+.when{font-size:.88rem; color:var(--ink-2); font-weight:600; white-space:nowrap}
+.late{display:inline-flex; align-items:center; gap:4px; margin-top:2px; padding:1px 8px; border-radius:6px; background:var(--tomato-l); color:var(--tomato-d); font-size:.75rem; font-weight:800; border:1.5px solid var(--tomato-d)}
+.late svg{width:13px; height:13px}
+.tk{font-weight:800; white-space:nowrap}
+tr.did td{background:var(--blue-l)}
+tr.did .stu,tr.did .item,tr.did .tk,tr.did .when{opacity:.6}
+.done-note{display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:.88rem; margin-right:8px; white-space:nowrap}
+.done-note svg{width:18px; height:18px; color:var(--blue)}
+.p-foot{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 18px; border-top:2px solid var(--ink); background:#F7F9FC; border-radius:0 0 12px 12px}
+.p-foot a{font-weight:800; font-size:.9rem; text-underline-offset:3px}
+.empty{padding:36px 18px; text-align:center}
+.empty b{display:block; font-size:1.05rem}
+.empty span{color:var(--ink-2); font-weight:600; font-size:.9rem}
+
+/* quick menu */
+.quick{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px}
+.q{
+  position:relative; display:flex; align-items:flex-start; gap:10px; min-height:76px; padding:12px;
+  background:#fff; border:2px solid var(--ink); border-radius:12px; box-shadow:2px 2px 0 var(--ink); text-decoration:none;
+  transition:transform var(--press), box-shadow var(--press), background var(--press);
+}
+.q:hover{background:var(--yellow-l)}
+.q:active{transform:translate(2px,2px); box-shadow:0 0 0 var(--ink)}
+.q svg{width:22px; height:22px; flex:none; margin-top:1px; color:var(--blue)}
+.q b{display:block; font-weight:800; font-size:.95rem; line-height:1.3}
+.q span{display:block; font-size:.8rem; font-weight:600; color:var(--ink-2); margin-top:2px}
+.q .pill{position:absolute; top:-10px; right:-8px; background:var(--tomato); color:var(--ink); font-size:.72rem; height:22px; margin:0; display:grid}
+
+/* grades */
+.gt{width:100%; border-collapse:collapse}
+.gt th{text-align:left; font-size:.8rem; font-weight:800; color:var(--ink-2); padding:10px 16px 8px; border-bottom:1px solid var(--line)}
+.gt td{padding:10px 16px; border-bottom:1px solid var(--line)}
+.gt .r{text-align:right}
+.gt tbody tr{cursor:pointer}
+.gt tbody tr:hover td{background:#F7F9FC}
+.gt .g a{font-weight:800; text-decoration:none}
+.gt .g a:hover{text-decoration:underline; text-underline-offset:3px}
+.bar{display:flex; align-items:center; gap:8px}
+.bar i{display:block; height:10px; border-radius:6px; background:var(--blue); border:1.5px solid var(--ink); min-width:6px}
+.bar b{font-weight:800; white-space:nowrap}
+.gt tfoot td{font-weight:800; border-bottom:0; background:#F7F9FC}
+.gt tfoot tr td:first-child{border-radius:0 0 0 12px}
+.gt tfoot tr td:last-child{border-radius:0 0 12px 0}
+
+/* toast */
+.toast{
+  position:fixed; left:50%; bottom:20px; z-index:30; transform:translate(-50%,160%); max-width:calc(100% - 32px);
+  display:flex; align-items:center; gap:12px; padding:10px 12px 10px 16px; background:var(--ink); color:#fff;
+  border-radius:12px; font-weight:800; font-size:.92rem; box-shadow:3px 3px 0 var(--yellow);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1);
+}
+.toast.show{transform:translate(-50%,0)}
+.toast .btn{min-height:34px; background:var(--yellow); box-shadow:none; border-color:var(--yellow)}
+
+@media (max-width:1000px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:720px){
+  .top-in{padding:10px 16px; flex-wrap:wrap}
+  .top-in time{display:none}
+  .wrap{padding:18px 16px 56px}
+  .summary{grid-template-columns:minmax(0,1fr)}
+  .summary > div + div{border-left:0; border-top:2px solid var(--ink)}
+  .summary > div{padding:10px 16px}
+  .summary dd{font-size:1.35rem}
+  .tbl thead{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+  .tbl, .tbl tbody{display:block}
+  .tbl tr{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; padding:12px 16px; border-bottom:1px solid var(--line)}
+  .tbl td{display:block; padding:0; border:0}
+  .tbl td.stu{grid-column:1}
+  .tbl td.item{grid-column:1}
+  .tbl td.tk{grid-column:2; grid-row:1; text-align:right}
+  .tbl td.when{grid-column:1}
+  .tbl td.act{grid-column:2; grid-row:2 / span 2; align-self:end; text-align:right}
+  .tbl tr.did td{background:none}
+  .tbl tr.did{background:var(--blue-l)}
+  .quick{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#"><b>곡수마켓</b><span>교사 대시보드</span></a>
+    <span class="sp"></span>
+    <time datetime="2026-11-03">11월 3일 화요일</time>
+    <a class="btn out" href="main.html">
+      <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M14 8l4 4-4 4M18 12H9"/></svg>
+      로그아웃
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="head">
+    <h1>오늘의 가게 현황</h1>
+    <p>오전 9시 40분 기준</p>
+  </div>
+
+  <dl class="summary">
+    <div><dt>총 학생 수</dt><dd class="num">114<small>명</small></dd></div>
+    <div><dt>총 구매 건수</dt><dd class="num" id="sumBuy">348<small>건</small></dd></div>
+    <div class="hot"><dt>전달 대기</dt><dd class="num"><span id="sumWait">7</span><small>건</small></dd></div>
+  </dl>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="pTitle">
+      <div class="p-head">
+        <h2 id="pTitle">전달 대기 <span class="pill num" id="pCount">7</span></h2>
+        <button class="btn" type="button" id="all">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12.5l4 4L15 8.5"/><path d="M11 15.5l1 1L21 7.5"/></svg>
+          <span id="allLabel">보이는 7건 모두 전달 완료</span>
+        </button>
+      </div>
+      <div class="filters" role="group" aria-label="학년으로 거르기" id="filters"></div>
+      <table class="tbl">
+        <thead><tr><th scope="col">학생</th><th scope="col">물건</th><th scope="col" class="r">티켓</th><th scope="col">구매 시각</th><th scope="col" class="r"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">처리</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="p-foot">
+        <span class="when">오래 기다린 순서로 보여요</span>
+        <a href="#purchases">구매 내역 전체 보기</a>
+      </div>
+    </section>
+
+    <div>
+      <section class="panel" aria-labelledby="qTitle">
+        <div class="p-head"><h2 id="qTitle">빠른 메뉴</h2></div>
+        <nav class="quick" aria-labelledby="qTitle">
+          <a class="q" href="#purchases">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+            <div><b>구매 내역 관리</b><span>전달 상태 변경</span></div>
+            <span class="pill num" id="qWait">대기 7</span>
+          </a>
+          <a class="q" href="#items">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+            <div><b>상품 관리</b><span>상품 추가·수정·삭제</span></div>
+          </a>
+          <a class="q" href="student.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l2-5h14l2 5"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 13v7h14v-7"/></svg>
+            <div><b>학생 페이지</b><span>학생 화면 확인</span></div>
+          </a>
+          <a class="q" href="#funding">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 20c0-3 2.5-5 5-5s5 2 5 5M11 20c0-3 2.5-5 5-5s5 2 5 5"/></svg>
+            <div><b>공동 펀딩 관리</b><span>통합 모금 만들기</span></div>
+          </a>
+        </nav>
+      </section>
+
+      <section class="panel" aria-labelledby="gTitle">
+        <div class="p-head"><h2 id="gTitle">학년별 현황</h2></div>
+        <table class="gt">
+          <thead><tr><th scope="col">학년</th><th scope="col" class="r">학생 수</th><th scope="col">총 티켓</th></tr></thead>
+          <tbody id="grades"></tbody>
+          <tfoot><tr><td>합계</td><td class="r num">114명</td><td class="num">6,732장</td></tr></tfoot>
+        </table>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button class="btn" type="button" id="undo">되돌리기</button></div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var grades = [
+    {g:3, n:26, t:1184}, {g:4, n:28, t:1402}, {g:5, n:31, t:1936}, {g:6, n:29, t:2210}
+  ];
+  var max = Math.max.apply(null, grades.map(function(x){ return x.t; }));
+  $('grades').innerHTML = grades.map(function(x){
+    return '<tr data-href="#students-' + x.g + '"><td class="g"><a href="#students-' + x.g + '">' + x.g + '학년</a></td><td class="r num">' + x.n + '명</td>' +
+      '<td><span class="bar"><i style="width:' + Math.round(x.t / max * 110) + 'px"></i><b class="num">' + x.t.toLocaleString('ko-KR') + '장</b></span></td></tr>';
+  }).join('');
+  $('grades').addEventListener('click', function(e){
+    var tr = e.target.closest('tr'); if(tr && !e.target.closest('a')) location.hash = tr.dataset.href;
+  });
+
+  var rows = [
+    {id:1, g:4, name:"한예린", item:"보드게임 30분 이용권", n:1, t:30, when:"10월 31일 13:05", late:3},
+    {id:2, g:5, name:"윤시우", item:"말랑 지우개", n:1, t:4, when:"11월 1일 12:40", late:2},
+    {id:3, g:6, name:"정하윤", item:"급식 먼저 먹기권", n:1, t:20, when:"어제 12:01"},
+    {id:4, g:4, name:"최지우", item:"반짝이 스티커", n:3, t:9, when:"어제 13:22"},
+    {id:5, g:6, name:"이서준", item:"자리 바꾸기권", n:1, t:15, when:"어제 14:40"},
+    {id:6, g:3, name:"박도윤", item:"연필 세트", n:2, t:10, when:"오늘 08:55"},
+    {id:7, g:5, name:"김하늘", item:"간식 쿠폰", n:1, t:8, when:"오늘 09:12"}
+  ];
+  var filter = 0, lastUndo = null, toastT;
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+  function waiting(){ return rows.filter(function(r){ return !r.done; }); }
+  function visible(){ return rows.filter(function(r){ return !r.gone && (!filter || r.g === filter); }); }
+
+  function render(){
+    var w = waiting();
+    $('sumWait').textContent = w.length; $('pCount').textContent = w.length; $('qWait').textContent = '대기 ' + w.length;
+
+    var counts = {0:w.length}; [3,4,5,6].forEach(function(g){ counts[g] = w.filter(function(r){ return r.g === g; }).length; });
+    $('filters').innerHTML = [0,3,4,5,6].map(function(g){
+      return '<button class="chip" type="button" data-f="' + g + '" aria-pressed="' + (filter === g) + '">' + (g ? g + '학년' : '전체') + '<span class="c num">' + counts[g] + '</span></button>';
+    }).join('');
+
+    var v = visible(), open = v.filter(function(r){ return !r.done; }).length;
+    $('allLabel').textContent = '보이는 ' + open + '건 모두 전달 완료';
+    $('all').disabled = !open; $('all').style.visibility = open ? 'visible' : 'hidden';
+
+    if(!v.length){
+      $('rows').innerHTML = '<tr><td colspan="5" class="empty"><b>전달할 물건이 없어요</b><span>' + (filter ? filter + '학년은 모두 전달했어요.' : '모두 전달했어요. 수고하셨어요!') + '</span></td></tr>';
+      return;
+    }
+    $('rows').innerHTML = v.map(function(r){
+      return '<tr' + (r.done ? ' class="did"' : '') + '>' +
+        '<td class="stu"><b>' + r.name + '</b><span>' + r.g + '학년</span></td>' +
+        '<td class="item">' + r.item + '<em>× ' + r.n + '</em></td>' +
+        '<td class="tk r num">' + r.t + '장</td>' +
+        '<td class="when">' + r.when + (r.late && !r.done ? '<br><span class="late">' + CLOCK + r.late + '일째 기다림</span>' : '') + '</td>' +
+        '<td class="act r">' + (r.done
+          ? '<span class="done-note">' + CHECK + '전달함</span><button class="btn quiet" type="button" data-undo="' + r.id + '">되돌리기</button>'
+          : '<button class="btn primary" type="button" data-done="' + r.id + '">' + CHECK.replace('stroke-width="3"','stroke-width="3" width="18" height="18"') + '전달 완료</button>') +
+        '</td></tr>';
+    }).join('');
+  }
+
+  function find(id){ return rows.filter(function(r){ return r.id == id; })[0]; }
+  function markDone(list){
+    list.forEach(function(r){ r.done = true; clearTimeout(r.timer); r.timer = setTimeout(function(){ r.gone = true; render(); }, 5000); });
+    lastUndo = list;
+    render();
+    showToast(list.length === 1 ? list[0].name + ' 학생에게 ' + list[0].item + ' 전달 완료' : list.length + '건을 전달 완료로 바꿨어요');
+  }
+  function undo(list){
+    list.forEach(function(r){ r.done = false; r.gone = false; clearTimeout(r.timer); });
+    hideToast(); render();
+  }
+  function showToast(m){ $('toastMsg').textContent = m; $('toast').classList.add('show'); clearTimeout(toastT); toastT = setTimeout(hideToast, 5000); }
+  function hideToast(){ $('toast').classList.remove('show'); }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.f !== undefined){ filter = +b.dataset.f; render(); }
+    else if(b.dataset.done){ markDone([find(b.dataset.done)]); var u = document.querySelector('[data-undo="' + b.dataset.done + '"]'); if(u) u.focus(); }
+    else if(b.dataset.undo){ undo([find(b.dataset.undo)]); }
+    else if(b.id === 'all'){ markDone(visible().filter(function(r){ return !r.done; })); }
+    else if(b.id === 'undo' && lastUndo){ undo(lastUndo); lastUndo = null; }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

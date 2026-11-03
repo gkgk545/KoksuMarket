@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>곡수마켓 · 상품 목록</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Gothic+A1:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#121418; --ink-2:#3d424a; --mute:#646a73;
+  --paper:#eceee9; --card:#ffffff; --line:#c9ccc5; --dim:#d9dbd5;
+  --sig:#ffc21a; --sig-press:#f0b000; --sig-soft:#fff3cc;
+  --err:#c4231b; --err-bg:#fdecea;
+  --rule:4px;
+  --num:"Barlow","Gothic A1",sans-serif;
+  --kr:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--kr);color:var(--ink);background:var(--paper);font-size:16px;line-height:1.5;word-break:keep-all;min-height:100vh}
+body.locked{overflow:hidden}
+::selection{background:var(--sig);color:var(--ink)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums lining-nums}
+.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- top bar ---------- */
+.top{background:var(--ink);color:#fff}
+.top .wrap{display:flex;align-items:stretch;gap:24px;min-height:84px}
+.top :focus-visible{outline-color:var(--sig)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;flex:none}
+.brand-plate{width:44px;height:44px;background:var(--sig);color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:25px;line-height:1}
+.brand-word{font-weight:900;font-size:24px;letter-spacing:-.02em}
+.me{display:flex;align-items:center;gap:12px;margin-left:auto;padding-left:24px}
+.plate{flex:none;width:40px;height:40px;background:#fff;color:var(--ink);display:grid;place-items:center;font-family:var(--num);font-weight:800;font-size:23px;line-height:1}
+.me-name{font-weight:800;font-size:18px;line-height:1.2}
+.me-name small{display:block;font-size:13px;font-weight:500;color:#c3c7cd}
+.wallet{display:flex;flex-direction:column;justify-content:center;background:var(--sig);color:var(--ink);padding:8px 20px;min-width:150px}
+.wallet span{font-size:13px;font-weight:800;line-height:1.2}
+.wallet b{font-family:var(--num);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.02em}
+.wallet b small{font-family:var(--kr);font-size:18px;font-weight:800;margin-left:3px;letter-spacing:0}
+.acts{display:flex;align-items:stretch}
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:76px;padding:8px 10px;font-size:13px;font-weight:700;text-decoration:none;position:relative;border-left:2px solid #2d3138}
+.act:hover{background:#23272e}
+.act svg{display:block}
+.badge{position:absolute;top:10px;left:calc(50% + 6px);min-width:24px;height:24px;padding:0 5px;background:#fff;color:var(--ink);font-family:var(--num);font-weight:800;font-size:15px;line-height:24px;text-align:center}
+.badge.bump{animation:bump .4s var(--ease)}
+@keyframes bump{40%{transform:scale(1.35);background:var(--sig)}}
+
+/* nav */
+.tabs{background:var(--card);border-bottom:var(--rule) solid var(--ink)}
+.tabs ul{list-style:none;display:flex}
+.tabs a{display:flex;align-items:center;min-height:56px;padding:0 24px;font-weight:800;font-size:18px;text-decoration:none;border-right:2px solid var(--dim)}
+.tabs li:first-child a{border-left:2px solid var(--dim)}
+.tabs a:hover{background:var(--sig-soft)}
+.tabs a[aria-current="page"]{background:var(--sig);border-color:var(--ink)}
+
+/* ---------- funding band ---------- */
+.fund{margin-top:32px;background:var(--card);border:var(--rule) solid var(--ink);display:grid;grid-template-columns:minmax(220px,1fr) 2fr auto;align-items:center;gap:28px;padding:20px 24px}
+.fund h2{font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1.25}
+.fund-meta{font-size:15px;color:var(--ink-2);font-weight:500;margin-top:4px}
+.track-nums{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:8px}
+.track-nums b{font-family:var(--num);font-weight:800;font-size:30px;line-height:1}
+.track-nums b small{font-family:var(--kr);font-size:15px;font-weight:700;color:var(--ink-2);margin-left:2px}
+.track-nums span{font-size:15px;font-weight:700}
+.track{position:relative;height:16px;background:var(--paper);border:2px solid var(--ink)}
+.track i{position:absolute;inset:0 auto 0 0;background:var(--ink)}
+.track b{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--ink)}
+.track-legend{display:flex;justify-content:space-between;font-family:var(--num);font-size:13px;font-weight:600;color:var(--mute);margin-top:4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 20px;font-weight:800;font-size:17px;text-decoration:none;border:3px solid var(--ink);background:var(--card);transition:background .15s}
+.btn:hover{background:var(--sig-soft)}
+.btn-sig{background:var(--sig)}
+.btn-sig:hover{background:var(--sig-press)}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-ink:hover{background:#2a2e35}
+.btn svg{flex:none}
+
+/* ---------- product list ---------- */
+.list-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:44px 0 16px}
+h1{font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1.15}
+h1 .num{font-size:26px;color:var(--ink-2);margin-left:8px;font-weight:700}
+.filter{display:inline-flex;align-items:center;gap:12px;font-weight:700;font-size:16px;min-height:48px;padding:0 4px}
+.switch{width:52px;height:30px;border:3px solid var(--ink);background:var(--card);position:relative;flex:none;transition:background .15s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;background:var(--ink);transition:transform .2s var(--ease)}
+.filter[aria-pressed="true"] .switch{background:var(--sig)}
+.filter[aria-pressed="true"] .switch::after{transform:translateX(22px)}
+
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:var(--rule) solid var(--ink);border-left:var(--rule) solid var(--ink);margin-bottom:64px}
+.item{border-right:var(--rule) solid var(--ink);border-bottom:var(--rule) solid var(--ink);background:var(--card);display:flex;flex-direction:column;position:relative;min-width:0}
+.visual{aspect-ratio:4/3;display:grid;place-items:center;background:var(--card);border-bottom:2px solid var(--dim);position:relative;overflow:hidden}
+.visual svg{width:46%;height:auto;max-width:132px}
+.ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--paper);padding-top:20px}
+.ph b{font-weight:900;font-size:clamp(44px,6vw,84px);line-height:1;color:var(--ink)}
+.ph span{font-size:12px;font-weight:700;color:var(--mute)}
+.flag{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:7px 14px;font-weight:800;font-size:15px;z-index:1}
+.flag-low{background:var(--sig);color:var(--ink);border-bottom:2px solid var(--ink)}
+.flag-out{background:var(--ink);color:#fff}
+.is-out .visual > svg,.is-out .ph b{opacity:.28}
+.body{padding:14px 16px 16px;display:flex;flex-direction:column;flex:1;gap:4px}
+.name{font-size:19px;font-weight:800;letter-spacing:-.02em;line-height:1.3}
+.more{font-size:14px;font-weight:700;color:var(--ink-2);text-underline-offset:3px;align-self:flex-start;padding:2px 0}
+.more:hover{color:var(--ink)}
+.price-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:auto;padding-top:10px}
+.price{font-family:var(--num);font-weight:800;font-size:46px;line-height:1;letter-spacing:-.03em}
+.price small{font-family:var(--kr);font-weight:800;font-size:18px;margin-left:3px;letter-spacing:0}
+.is-out .price{color:var(--mute)}
+.stock{font-size:14px;font-weight:700;color:var(--ink-2);text-align:right}
+.buy{margin-top:12px;min-height:54px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:900;font-size:18px;background:var(--sig);border:3px solid var(--ink);transition:background .15s}
+.buy:hover{background:var(--sig-press)}
+.buy:active{transform:translateY(1px)}
+.buy.added{background:var(--ink);color:#fff}
+.buy[disabled]{cursor:not-allowed;background:var(--card);color:var(--ink-2);border:3px dashed var(--ink-2);font-weight:800}
+.is-out .buy[disabled]{background:var(--dim);border:3px solid var(--dim);color:var(--ink-2)}
+.need{font-size:14px;font-weight:700;color:var(--ink-2);text-align:center;margin-top:6px;min-height:21px}
+.need.inc{color:var(--ink)}
+.need.inc span{background:var(--sig-soft);padding:0 6px}
+.empty{grid-column:1/-1;border-right:var(--rule) solid var(--ink);border-bottom:var(--rule) solid var(--ink);background:var(--card);padding:48px 24px;text-align:center}
+.empty b{display:block;font-size:22px;font-weight:900;margin-bottom:6px}
+
+/* ---------- cart drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(18,20,24,.55);z-index:40;opacity:0;transition:opacity .2s}
+.scrim.on{opacity:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--card);border-left:var(--rule) solid var(--ink);z-index:50;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .26s var(--ease);visibility:hidden}
+.drawer.on{transform:none;visibility:visible}
+.d-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--ink);color:#fff;padding:10px 8px 10px 24px;min-height:76px}
+.d-head h2{font-size:24px;font-weight:900;letter-spacing:-.02em}
+.d-head h2 .num{color:var(--sig);margin-left:6px}
+.d-head :focus-visible{outline-color:var(--sig)}
+.x{width:56px;height:56px;display:grid;place-items:center}
+.x:hover{background:#23272e}
+.d-body{flex:1;overflow-y:auto;scrollbar-color:var(--ink) var(--paper);scrollbar-width:thin}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:18px 24px;border-bottom:2px solid var(--dim)}
+.row-name{font-weight:800;font-size:18px;line-height:1.3}
+.row-unit{font-size:14px;color:var(--ink-2);font-weight:600}
+.row-sum{font-family:var(--num);font-weight:800;font-size:28px;line-height:1;text-align:right;align-self:center}
+.row-sum small{font-family:var(--kr);font-size:15px;margin-left:2px}
+.row-ctl{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.step{display:inline-flex;border:3px solid var(--ink)}
+.step button{width:48px;height:44px;display:grid;place-items:center}
+.step button:hover{background:var(--sig-soft)}
+.step button[disabled]{color:var(--line);cursor:not-allowed;background:none}
+.step output{min-width:48px;display:grid;place-items:center;font-family:var(--num);font-weight:800;font-size:20px;border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
+.rm{font-weight:700;font-size:15px;color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;padding:10px 4px;min-height:44px}
+.rm:hover{color:var(--err)}
+.d-empty{padding:56px 24px;text-align:center}
+.d-empty b{display:block;font-size:22px;font-weight:900;margin-bottom:8px}
+.d-empty p{color:var(--ink-2);margin-bottom:20px}
+.d-foot{border-top:var(--rule) solid var(--ink);padding:18px 24px 24px;background:var(--card)}
+.sum{display:flex;justify-content:space-between;align-items:baseline}
+.sum span{font-weight:800;font-size:18px}
+.sum b{font-family:var(--num);font-weight:800;font-size:52px;line-height:1;letter-spacing:-.03em}
+.sum b small{font-family:var(--kr);font-size:20px;margin-left:3px;letter-spacing:0}
+.left{display:flex;justify-content:space-between;font-size:15px;font-weight:600;color:var(--ink-2);margin-top:6px;padding-top:8px;border-top:2px solid var(--dim)}
+.left b{font-family:var(--num);font-weight:700;color:var(--ink);font-size:17px}
+.alert{margin-top:12px;padding:10px 14px;background:var(--err-bg);color:var(--err);font-weight:700;border-top:3px solid var(--err)}
+.d-foot .btn{width:100%;min-height:64px;font-size:21px;margin-top:16px}
+.d-foot .btn[disabled]{background:var(--dim);border-color:var(--dim);color:var(--ink-2);cursor:not-allowed}
+.confirm-q{font-size:20px;font-weight:900;line-height:1.35;margin-top:4px}
+.confirm-q .num{background:var(--sig);padding:0 4px}
+.confirm-n{color:var(--ink-2);font-size:15px;margin-top:6px}
+.two{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px}
+.two .btn{margin-top:0;min-height:60px;font-size:18px}
+.done{padding:48px 24px;text-align:center}
+.done .stamp{display:inline-grid;place-items:center;width:112px;height:112px;background:var(--sig);border:var(--rule) solid var(--ink);margin-bottom:20px;animation:stamp .5s var(--ease)}
+@keyframes stamp{from{transform:scale(1.5) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+.done b{display:block;font-size:28px;font-weight:900;letter-spacing:-.02em;margin-bottom:6px}
+.done p{color:var(--ink-2);font-size:16px}
+
+/* celebration */
+.burst{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+.burst i{position:absolute;top:-24px;width:12px;height:22px;animation:fall 1.8s cubic-bezier(.3,.6,.5,1) forwards}
+@keyframes fall{to{transform:translate3d(var(--dx),110vh,0) rotate(var(--r))}}
+
+@media (max-width:1100px){
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .fund{grid-template-columns:1fr 1.4fr;}
+  .fund .btn{grid-column:1/-1;justify-self:start}
+}
+@media (max-width:760px){
+  .wrap{padding:0 16px}
+  .top .wrap{flex-wrap:wrap;gap:0;min-height:0;padding-right:0}
+  .brand{min-height:60px}
+  .brand-word{font-size:21px}
+  .acts{margin-left:auto}
+  .act{min-width:58px;border-left:0;font-size:12px;padding:6px 4px}
+  .badge{top:4px}
+  .me{order:3;width:calc(100% + 16px);margin:0 0 0 -16px;padding:0 0 0 16px;border-top:2px solid #2d3138;gap:10px}
+  .wallet{margin-left:auto;padding:6px 16px;min-width:0}
+  .wallet b{font-size:32px}
+  .plate{width:34px;height:34px;font-size:20px}
+  .me-name{font-size:16px}
+  .tabs .wrap{padding:0}
+  .tabs a{padding:0 14px;font-size:16px;min-height:52px;white-space:nowrap}
+  .tabs li{flex:1}
+  .tabs li a{justify-content:center}
+  .tabs li:first-child a{border-left:0}
+  .fund{grid-template-columns:1fr;gap:16px;padding:16px;margin-top:20px;border-width:3px}
+  .fund .btn{width:100%}
+  .list-head{margin-top:32px}
+  h1{font-size:28px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));border-width:3px 0 0 3px}
+  .item,.empty{border-width:0 3px 3px 0}
+  .body{padding:12px 12px 12px}
+  .name{font-size:17px}
+  .price{font-size:36px}
+  .stock{font-size:13px}
+  .buy{font-size:17px;min-height:50px}
+  .flag{font-size:13px;padding:5px 10px}
+}
+@media (max-width:360px){
+  .price-row{flex-direction:column;align-items:flex-start}
+  .stock{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .burst{display:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="main.html" aria-label="곡수마켓 처음 화면">
+      <span class="brand-plate" aria-hidden="true">곡</span><span class="brand-word">곡수마켓</span>
+    </a>
+    <div class="me">
+      <span class="plate" aria-hidden="true">5</span>
+      <p class="me-name">김하늘<small>5학년</small></p>
+      <p class="wallet" aria-live="polite"><span>보유 티켓</span><b class="num" id="wallet">37<small>장</small></b></p>
+    </div>
+    <nav class="acts" aria-label="내 메뉴">
+      <a class="act" href="#history">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="M5 3h14v18H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>구매 기록</span>
+      </a>
+      <button class="act" type="button" id="open-cart" aria-haspopup="dialog" aria-controls="drawer">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="M2 4h3l2.4 11h11.2L21 7H6.2"/><circle cx="9" cy="19.5" r="1.6"/><circle cx="17" cy="19.5" r="1.6"/></svg>
+        <span>장바구니</span><b class="badge" id="badge">3</b>
+        <span class="sr" id="badge-sr">3개 담김</span>
+      </button>
+      <a class="act" href="main.html">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="M14 4H4v16h10"/><path d="M10 12h11M17 8l4 4-4 4"/></svg>
+        <span>로그아웃</span>
+      </a>
+    </nav>
+  </div>
+</header>
+<nav class="tabs" aria-label="마켓 메뉴">
+  <div class="wrap">
+    <ul>
+      <li><a href="#products" aria-current="page">상품 목록</a></li>
+      <li><a href="#funding">공동 펀딩</a></li>
+      <li><a href="#ranking">마켓 랭킹</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="wrap" id="products">
+  <section class="fund" id="funding" aria-labelledby="fund-title">
+    <div>
+      <h2 id="fund-title">공동 펀딩 · 학급 보드게임 세트</h2>
+      <p class="fund-meta">11월 14일(금)까지 · 23명 참여 중</p>
+    </div>
+    <div>
+      <div class="track-nums">
+        <b class="num">142<small>/ 200장</small></b>
+        <span>58장 더 모으면 완성</span>
+      </div>
+      <div class="track" role="progressbar" aria-label="공동 펀딩 진행" aria-valuemin="0" aria-valuemax="200" aria-valuenow="142" aria-valuetext="200장 중 142장"><i style="width:71%"></i><b style="left:25%"></b><b style="left:50%"></b><b style="left:75%"></b></div>
+      <div class="track-legend" aria-hidden="true"><span>0</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+    </div>
+    <a class="btn btn-ink" href="#funding">펀딩 참여하기
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+  </section>
+
+  <div class="list-head">
+    <h1>판매 중인 물건<span class="num" id="count">8개</span></h1>
+    <button class="filter" type="button" id="filter" aria-pressed="false"><span class="switch" aria-hidden="true"></span>지금 살 수 있는 것만</button>
+  </div>
+  <div class="grid" id="grid" aria-live="polite"></div>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+  <div class="d-head">
+    <h2 id="cart-title">장바구니<span class="num" id="cart-n">3</span></h2>
+    <button class="x" type="button" id="close-cart" aria-label="장바구니 닫기">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+    </button>
+  </div>
+  <div class="d-body" id="d-body"></div>
+  <div class="d-foot" id="d-foot"></div>
+</aside>
+
+<script>
+(function(){
+  var S = 'fill="none" stroke="#121418" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"';
+  var Y = '#ffc21a';
+  var pics = {
+    pencil:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M12 10h10v34l-5 10-5-10z" fill="'+Y+'"/><path d="M27 10h10v34l-5 10-5-10z"/><path d="M42 10h10v34l-5 10-5-10z"/><path d="M12 18h10M27 18h10M42 18h10"/></g></svg>',
+    coupon:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M6 16h52v11a5 5 0 0 0 0 10v11H6V37a5 5 0 0 0 0-10z"/><path d="M42 18v4M42 30v4M42 42v4"/><circle cx="24" cy="32" r="9" fill="'+Y+'"/></g><g fill="#121418"><circle cx="21" cy="29" r="2"/><circle cx="27" cy="34" r="2"/></g></svg>',
+    seat:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M10 22v26M10 38h14v10"/><path d="M54 22v26M54 38H40v10"/><path d="M22 12h20M37 7l5 5-5 5"/><path d="M42 26H22M27 21l-5 5 5 5"/></g></svg>',
+    lunch:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M6 30h52v20H6z"/><path d="M28 30v20M28 40h30"/><path d="M14 8v12M10 8v6a4 4 0 0 0 8 0V8"/><path d="M44 6l4 16M52 6l-1 16"/></g><rect x="8" y="32" width="18" height="16" fill="'+Y+'"/></svg>',
+    sticker:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M8 8h36l12 12v36H8z"/><path d="M44 8v12h12"/><path d="M32 22l3.6 9.2 9.6.4-7.5 6 2.6 9.5-8.3-5.4-8.3 5.4 2.6-9.5-7.5-6 9.6-.4z" fill="'+Y+'"/></g></svg>',
+    dice:'<svg viewBox="0 0 64 64" aria-hidden="true"><g '+S+'><path d="M6 26h26v26H6z"/><path d="M33 9l23 6-6 23-23-6z" fill="'+Y+'"/></g><g fill="#121418"><circle cx="13" cy="33" r="2.6"/><circle cx="25" cy="45" r="2.6"/><circle cx="19" cy="39" r="2.6"/><circle cx="37" cy="18" r="2.6"/><circle cx="47" cy="30" r="2.6"/></g></svg>'
+  };
+  var items = [
+    {id:1,name:"연필 세트",cost:5,qty:20,pic:"pencil"},
+    {id:2,name:"간식 쿠폰",cost:8,qty:2,pic:"coupon"},
+    {id:3,name:"자리 바꾸기권",cost:15,qty:6,pic:"seat"},
+    {id:4,name:"급식 먼저 먹기권",cost:20,qty:0,pic:"lunch"},
+    {id:5,name:"반짝이 스티커",cost:3,qty:30,pic:"sticker"},
+    {id:6,name:"보드게임 30분 이용권",cost:45,qty:4,pic:"dice"},
+    {id:7,name:"음악 신청곡권",cost:10,qty:1},
+    {id:8,name:"캐릭터 지우개",cost:4,qty:12,link:"#item-8"}
+  ];
+  var balance = 37;
+  var cart = {1:1,5:2};
+  var onlyBuyable = false;
+  var stage = "list"; // list | confirm | done
+  var $ = function(s){return document.querySelector(s)};
+  var grid = $("#grid"), drawer = $("#drawer"), scrim = $("#scrim");
+  var lastFocus = null;
+
+  function byId(id){ for(var i=0;i<items.length;i++) if(items[i].id==id) return items[i]; }
+  function cartCount(){ var n=0; for(var k in cart) n+=cart[k]; return n; }
+  function cartTotal(){ var t=0; for(var k in cart) t+=byId(k).cost*cart[k]; return t; }
+  var arrow = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+
+  function card(it){
+    var out = it.qty<=0, low = !out && it.qty<=3, afford = balance>=it.cost;
+    var inCart = cart[it.id]||0, full = inCart>=it.qty;
+    var cls = "item"+(out?" is-out":"");
+    var flag = out ? '<p class="flag flag-out">품절</p>' : (low ? '<p class="flag flag-low">품절 임박 · '+it.qty+'개 남음</p>' : '');
+    var vis = it.pic ? pics[it.pic] : '<div class="ph"><b>'+it.name.charAt(0)+'</b><span>사진 없음</span></div>';
+    var btn, need = "";
+    if(out){ btn = '<button class="buy" type="button" disabled>품절</button>'; need='<p class="need">다음 입고를 기다려요</p>'; }
+    else if(!afford){ btn = '<button class="buy" type="button" disabled>티켓 부족</button>'; need = '<p class="need"><span class="num">'+(it.cost-balance)+'</span>장 더 필요해요</p>'; }
+    else if(full){ btn = '<button class="buy" type="button" disabled>남은 것 모두 담음</button>'; }
+    else btn = '<button class="buy'+'" type="button" data-add="'+it.id+'" aria-label="'+it.name+' 장바구니에 담기">'+arrow+(inCart?'하나 더 담기':'담기')+'</button>';
+    var stock = out ? '<span class="stock">재고 0개</span>' : '<span class="stock">재고 '+it.qty+'개</span>';
+    if(!need) need = inCart ? '<p class="need inc"><span>장바구니에 '+inCart+'개</span></p>' : '<p class="need" aria-hidden="true"></p>';
+    return '<article class="'+cls+'"><div class="visual">'+flag+vis+'</div><div class="body">'+
+      '<h3 class="name">'+it.name+'</h3>'+(it.link?'<a class="more" href="'+it.link+'">자세히 보기</a>':'')+
+      '<div class="price-row"><p class="price"><span class="sr">가격 </span>'+it.cost+'<small>장</small></p>'+stock+'</div>'+btn+need+'</div></article>';
+  }
+  function renderGrid(){
+    var list = items.filter(function(it){ return !onlyBuyable || (it.qty>0 && balance>=it.cost); });
+    grid.innerHTML = list.length ? list.map(card).join("") :
+      '<div class="empty"><b>지금 살 수 있는 물건이 없어요</b><p>티켓을 더 모으거나, 필터를 끄고 전체 물건을 보세요.</p></div>';
+    $("#count").textContent = list.length+"개";
+  }
+  function renderHead(bump){
+    var n = cartCount(), b = $("#badge");
+    b.textContent = n; b.hidden = n===0;
+    $("#badge-sr").textContent = n+"개 담김";
+    $("#cart-n").textContent = n;
+    $("#wallet").innerHTML = balance+'<small>장</small>';
+    if(bump){ b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump"); }
+  }
+  function renderCart(){
+    var body = $("#d-body"), foot = $("#d-foot"), ids = Object.keys(cart);
+    if(stage==="done"){
+      body.innerHTML = '<div class="done"><span class="stamp"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#121418" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span><b>구매 완료!</b><p>선생님이 확인하고 물건을 전달해 줄 거예요.<br>남은 티켓은 <strong class="num">'+balance+'</strong>장이에요.</p></div>';
+      foot.innerHTML = '<a class="btn btn-sig" href="#products" data-close>계속 둘러보기</a><a class="btn" href="#history" style="width:100%;margin-top:10px;min-height:56px;font-size:18px">구매 기록 보기</a>';
+      return;
+    }
+    if(!ids.length){
+      body.innerHTML = '<div class="d-empty"><b>장바구니가 비어 있어요</b><p>사고 싶은 물건의 ‘담기’를 눌러 보세요.</p><button class="btn btn-sig" type="button" data-close>물건 보러 가기</button></div>';
+      foot.innerHTML = ''; foot.hidden = true; return;
+    }
+    foot.hidden = false;
+    body.innerHTML = ids.map(function(id){
+      var it = byId(id), q = cart[id];
+      return '<div class="row"><div><p class="row-name">'+it.name+'</p><p class="row-unit"><span class="num">'+it.cost+'</span>장 × <span class="num">'+q+'</span>개</p></div>'+
+        '<p class="row-sum num">'+(it.cost*q)+'<small>장</small></p>'+
+        '<div class="row-ctl"><div class="step" role="group" aria-label="'+it.name+' 수량"><button type="button" data-dec="'+id+'" aria-label="하나 빼기"'+(q<=1?' disabled':'')+'><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12h14"/></svg></button><output class="num">'+q+'</output><button type="button" data-inc="'+id+'" aria-label="하나 더"'+(q>=it.qty?' disabled':'')+'>'+arrow.replace('width="20" height="20"','width="18" height="18"')+'</button></div>'+
+        '<button class="rm" type="button" data-rm="'+id+'">빼기</button></div></div>';
+    }).join("");
+    var total = cartTotal(), short = total-balance;
+    if(stage==="confirm" && short<=0){
+      foot.innerHTML = '<p class="confirm-q">티켓 <span class="num">'+total+'</span>장을 내고 살까요?</p><p class="confirm-n">구매하면 취소할 수 없어요. 남는 티켓은 <strong class="num">'+(balance-total)+'</strong>장이에요.</p>'+
+        '<div class="two"><button class="btn" type="button" id="cancel">다시 볼게요</button><button class="btn btn-sig" type="button" id="pay">네, 살게요</button></div>';
+      setTimeout(function(){ var p=$("#pay"); if(p) p.focus(); },30);
+      return;
+    }
+    stage = "list";
+    foot.innerHTML = '<div class="sum"><span>합계</span><b class="num">'+total+'<small>장</small></b></div>'+
+      '<p class="left"><span>보유 <b class="num">'+balance+'</b>장</span><span>구매 후 <b class="num">'+Math.max(balance-total,0)+'</b>장 남음</span></p>'+
+      (short>0?'<p class="alert" role="alert">티켓이 <span class="num">'+short+'</span>장 모자라요. 물건을 빼 주세요.</p>':'')+
+      '<button class="btn btn-sig" type="button" id="checkout"'+(short>0?' disabled':'')+'>구매하기</button>';
+  }
+  function openCart(){
+    lastFocus = document.activeElement;
+    if(stage==="done") stage="list";
+    renderCart();
+    scrim.hidden = false; requestAnimationFrame(function(){ scrim.classList.add("on"); drawer.classList.add("on"); });
+    document.body.classList.add("locked");
+    setTimeout(function(){ $("#close-cart").focus(); }, 60);
+  }
+  function closeCart(){
+    scrim.classList.remove("on"); drawer.classList.remove("on");
+    document.body.classList.remove("locked");
+    setTimeout(function(){ scrim.hidden = true; }, 220);
+    if(stage==="done") stage="list";
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function celebrate(){
+    if(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var box = document.createElement("div"); box.className="burst"; box.setAttribute("aria-hidden","true");
+    var cols = ["#ffc21a","#121418","#ffffff"], html="";
+    for(var i=0;i<34;i++){
+      var c = cols[i%3];
+      html += '<i style="left:'+(Math.random()*100)+'%;background:'+c+';'+(c==="#ffffff"?'outline:2px solid #121418;':'')+'animation-delay:'+(Math.random()*.35).toFixed(2)+'s;--dx:'+(Math.random()*120-60).toFixed(0)+'px;--r:'+(Math.random()*720-360).toFixed(0)+'deg"></i>';
+    }
+    box.innerHTML = html; document.body.appendChild(box);
+    setTimeout(function(){ box.remove(); }, 2400);
+  }
+
+  document.addEventListener("click", function(e){
+    var t = e.target.closest("button,a"); if(!t) return;
+    if(t.dataset.add){
+      var id = t.dataset.add; cart[id] = (cart[id]||0)+1;
+      renderGrid(); renderHead(true);
+      var nb = grid.querySelector('[data-add="'+id+'"]');
+      if(nb){ nb.classList.add("added"); nb.innerHTML = "담았어요"; nb.focus(); setTimeout(function(){ renderGrid(); var f=grid.querySelector('[data-add="'+id+'"]'); if(f && document.activeElement===document.body) f.focus(); }, 900); }
+    }
+    else if(t.id==="open-cart") openCart();
+    else if(t.id==="close-cart" || t.hasAttribute("data-close")) closeCart();
+    else if(t.dataset.inc){ cart[t.dataset.inc]++; stage="list"; renderCart(); renderHead(); renderGrid(); }
+    else if(t.dataset.dec){ cart[t.dataset.dec]--; stage="list"; renderCart(); renderHead(); renderGrid(); }
+    else if(t.dataset.rm){ delete cart[t.dataset.rm]; stage="list"; renderCart(); renderHead(); renderGrid(); $("#close-cart").focus(); }
+    else if(t.id==="checkout"){ stage="confirm"; renderCart(); }
+    else if(t.id==="cancel"){ stage="list"; renderCart(); $("#checkout").focus(); }
+    else if(t.id==="pay"){
+      var total = cartTotal(); balance -= total;
+      for(var k in cart){ byId(k).qty -= cart[k]; }
+      cart = {}; stage="done";
+      renderCart(); renderHead(); renderGrid(); celebrate();
+      $("#close-cart").focus();
+    }
+    else if(t.id==="filter"){
+      onlyBuyable = !onlyBuyable; t.setAttribute("aria-pressed", onlyBuyable); renderGrid();
+    }
+  });
+  scrim.addEventListener("click", closeCart);
+  document.addEventListener("keydown", function(e){
+    if(!drawer.classList.contains("on")) return;
+    if(e.key==="Escape") closeCart();
+    if(e.key==="Tab"){
+      var f = drawer.querySelectorAll("button:not([disabled]),a[href]"); if(!f.length) return;
+      var a=f[0], z=f[f.length-1];
+      if(e.shiftKey && document.activeElement===a){ e.preventDefault(); z.focus(); }
+      else if(!e.shiftKey && document.activeElement===z){ e.preventDefault(); a.focus(); }
+    }
+  });
+  renderGrid(); renderHead(); renderCart();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>곡수마켓 입장</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#E3E6DE; --ground-2:#D6DACF;
+  --paper:#FCFBF7; --paper-2:#F2F0E9;
+  --ink:#1C2130; --ink-2:#464D5E; --ink-3:#646A79;
+  --rule:#C5C8BE; --rule-2:#E3E1D8;
+  --ticket:#F4C430; --ticket-2:#E3AE12; --ticket-ink:#2A2100;
+  --stamp:#C3352B; --stamp-bg:#FBEAE7;
+  --done:#1F4F99;
+  --r:6px;
+  --display:"Black Han Sans","Gothic A1",sans-serif;
+  --ui:"Gothic A1",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;word-break:keep-all;overflow-wrap:break-word}
+body{
+  margin:0;min-height:100vh;background:var(--ground);color:var(--ink);
+  font:500 16px/1.5 var(--ui);font-variant-numeric:tabular-nums;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 16px;gap:24px;caret-color:var(--ink);
+  scrollbar-color:var(--ink-3) var(--ground-2);
+}
+::selection{background:var(--ticket);color:var(--ticket-ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:4px}
+button{font:inherit;color:inherit}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* The admission ticket */
+.ticket-wrap{width:100%;max-width:860px;filter:drop-shadow(0 0 .6px rgba(28,33,48,.45)) drop-shadow(0 6px 14px rgba(28,33,48,.10))}
+.ticket{
+  --stub-w:248px;
+  display:grid;grid-template-columns:var(--stub-w) 1fr;min-height:480px;
+  background:var(--paper);border-radius:10px;
+  -webkit-mask:
+    radial-gradient(circle 13px at var(--stub-w) 0,#0000 12.5px,#000 13px),
+    radial-gradient(circle 13px at var(--stub-w) 100%,#0000 12.5px,#000 13px);
+  -webkit-mask-composite:source-in;
+  mask:
+    radial-gradient(circle 13px at var(--stub-w) 0,#0000 12.5px,#000 13px),
+    radial-gradient(circle 13px at var(--stub-w) 100%,#0000 12.5px,#000 13px);
+  mask-composite:intersect;
+}
+.stub{
+  background:var(--ticket);color:var(--ticket-ink);
+  padding:28px 24px 24px;display:flex;flex-direction:column;gap:20px;
+  border-radius:10px 0 0 10px;position:relative;
+}
+.stub::after{ /* perforation between stub and body */
+  content:"";position:absolute;top:22px;bottom:22px;right:-1px;
+  border-right:2px dashed rgba(42,33,0,.45);
+}
+.brand{font:400 40px/1.05 var(--display);letter-spacing:-.01em;margin:0}
+.brand small{display:block;font:700 14px/1.4 var(--ui);letter-spacing:.02em;margin-top:8px;color:#3D3108}
+.fields{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;margin-top:auto}
+.field{
+  width:100%;display:grid;grid-template-columns:78px 1fr;align-items:baseline;gap:8px;
+  background:none;border:0;border-bottom:1.5px solid rgba(42,33,0,.35);
+  padding:12px 4px 8px;text-align:left;cursor:pointer;border-radius:0;color:var(--ticket-ink);
+  transition:background-color .18s var(--ease);
+}
+.field:hover{background:rgba(255,255,255,.28)}
+.field .k{font:700 13px/1 var(--ui);color:#3D3108;white-space:nowrap}
+.field .v{font:400 22px/1.1 var(--display);min-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.field .v.empty{font:500 15px/1.6 var(--ui);color:#5A4A12}
+.field[aria-current="step"]{background:rgba(255,255,255,.5)}
+.field[aria-current="step"] .k::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ticket-ink);margin-right:6px;vertical-align:1px}
+.serial{font:700 12px/1 var(--ui);letter-spacing:.08em;color:#4A3C0C;margin:0}
+
+.body{padding:36px 40px 32px;display:flex;flex-direction:column;min-width:0}
+.step-head{display:flex;align-items:center;gap:12px;margin-bottom:24px;min-height:44px}
+.step-head h1{font:800 26px/1.25 var(--ui);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.back{
+  flex:none;height:44px;padding:0 14px 0 8px;border-radius:var(--r);border:1.5px solid var(--rule);font-weight:700;font-size:15px;gap:2px;
+  background:var(--paper);display:inline-flex;align-items:center;cursor:pointer;color:var(--ink-2);
+}
+.back:hover{background:var(--paper-2);color:var(--ink)}
+.back svg{width:20px;height:20px}
+.panel{display:none;flex:1;flex-direction:column}
+.panel.on{display:flex;animation:in .22s var(--ease)}
+@keyframes in{from{opacity:.001;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.grades{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.grade{
+  height:120px;border:1.5px solid var(--rule);border-radius:var(--r);background:var(--paper);
+  cursor:pointer;display:grid;place-items:center;
+  transition:border-color .15s,background-color .15s,transform .15s var(--ease);
+}
+.gi{display:inline-flex;align-items:baseline;gap:4px}
+.grade b{font:400 56px/1 var(--display);color:var(--ink)}
+.grade span{font:700 18px/1 var(--ui);color:var(--ink-2)}
+.grade:hover{border-color:var(--ink);background:#fff}
+.grade:active{transform:translateY(1px)}
+.grade[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink);background:#fff}
+
+.names{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-height:300px;overflow-y:auto;padding:2px;margin:-2px}
+.name{
+  min-height:56px;border:1.5px solid var(--rule);border-radius:var(--r);background:var(--paper);
+  font:700 18px/1.2 var(--ui);cursor:pointer;text-align:left;padding:0 16px;
+  transition:border-color .15s,background-color .15s;
+}
+.name:hover{border-color:var(--ink);background:#fff}
+.names-note{font-size:14px;color:var(--ink-3);margin:14px 0 0}
+
+.who{display:flex;align-items:baseline;gap:10px;padding:14px 16px;background:var(--paper-2);border-radius:var(--r);margin-bottom:20px}
+.who b{font:400 26px/1 var(--display)}
+.who span{color:var(--ink-2);font-weight:700}
+.who button{margin-left:auto;background:none;border:0;color:var(--ink-2);font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px 4px}
+label.lbl{font:700 15px/1 var(--ui);display:block;margin-bottom:10px}
+.pw{
+  width:100%;height:60px;border:1.5px solid var(--rule);border-radius:var(--r);background:#fff;
+  font:700 24px/1 var(--ui);letter-spacing:.2em;padding:0 18px;color:var(--ink);
+}
+.pw::placeholder{letter-spacing:0;font-size:17px;font-weight:500;color:var(--ink-3)}
+.pw:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,33,48,.15)}
+.pw[aria-invalid="true"]{border-color:var(--stamp);box-shadow:0 0 0 3px rgba(195,53,43,.14)}
+.hint{font-size:14px;color:var(--ink-3);margin:10px 0 0}
+.err{
+  display:none;align-items:flex-start;gap:10px;margin-top:14px;padding:12px 14px;
+  background:var(--stamp-bg);color:var(--stamp);border-radius:var(--r);font-weight:700;font-size:15px;
+}
+.err.on{display:flex}
+.err svg{flex:none;width:20px;height:20px;margin-top:1px}
+.go{
+  margin-top:24px;height:56px;border:0;border-radius:var(--r);background:var(--ink);color:var(--paper);
+  font:800 18px/1 var(--ui);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:background-color .15s;
+}
+.go:hover{background:#000}
+.go:disabled{background:var(--paper-2);color:var(--ink-3);cursor:not-allowed;box-shadow:inset 0 0 0 1.5px var(--rule)}
+.go svg{width:20px;height:20px}
+.go .spin{display:none;width:20px;height:20px;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+.go.loading .spin{display:block}.go.loading .t{display:none}
+@keyframes sp{to{transform:rotate(1turn)}}
+
+.links{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.links a{
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;
+  color:var(--ink-2);font-weight:700;font-size:15px;text-decoration:none;border-radius:var(--r);
+}
+.links a:hover{color:var(--ink);background:var(--ground-2)}
+.links svg{width:16px;height:16px}
+
+@media (max-width:760px){
+  .ticket{--stub-w:0px;grid-template-columns:1fr;min-height:0;-webkit-mask:none;mask:none}
+  .stub{border-radius:10px 10px 0 0;padding:20px 20px 16px;gap:14px}
+  .stub::after{top:auto;bottom:-1px;left:16px;right:16px;border-right:0;border-bottom:2px dashed rgba(42,33,0,.45)}
+  .brand{font-size:32px}
+  .brand small{display:inline;margin:0 0 0 8px;font-size:13px}
+  .serial{display:none}
+  .fields{flex-direction:row;gap:6px;margin-top:0}
+  .fields li{flex:1;min-width:0}
+  .field{grid-template-columns:1fr;gap:2px;padding:8px 6px 6px}
+  .field .v{font-size:17px}.field .v.empty{font-size:13px;line-height:1.3}
+  .body{padding:24px 20px 24px}
+  .step-head h1{font-size:22px}
+  .grades{gap:10px}.grade{height:96px}.grade b{font-size:44px}
+  .names{grid-template-columns:repeat(2,1fr);max-height:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5M12 16.2v.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+</svg>
+
+<main class="ticket-wrap">
+  <div class="ticket">
+    <aside class="stub" aria-label="입장권">
+      <p class="brand">곡수마켓<small>우리 학교 티켓 가게</small></p>
+      <p class="serial">입장권 · 2026 가을</p>
+      <ol class="fields" aria-label="입장 단계">
+        <li><button class="field" type="button" data-go="grade" aria-current="step"><span class="k">학년</span><span class="v empty" id="f-grade">고르기 전</span></button></li>
+        <li><button class="field" type="button" data-go="name"><span class="k">이름</span><span class="v empty" id="f-name">고르기 전</span></button></li>
+        <li><button class="field" type="button" data-go="pw"><span class="k">비밀번호</span><span class="v empty" id="f-pw">입력 전</span></button></li>
+      </ol>
+    </aside>
+
+    <section class="body" aria-live="polite">
+      <div class="panel on" id="p-grade">
+        <div class="step-head"><h1>몇 학년이에요?</h1></div>
+        <div class="grades" role="group" aria-label="학년">
+          <button class="grade" type="button" data-grade="3"><span class="gi"><b>3</b><span>학년</span></span></button>
+          <button class="grade" type="button" data-grade="4"><span class="gi"><b>4</b><span>학년</span></span></button>
+          <button class="grade" type="button" data-grade="5"><span class="gi"><b>5</b><span>학년</span></span></button>
+          <button class="grade" type="button" data-grade="6"><span class="gi"><b>6</b><span>학년</span></span></button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-name">
+        <div class="step-head">
+          <button class="back" type="button" data-go="grade"><svg aria-hidden="true"><use href="#i-back"/></svg>학년</button>
+          <h1><span id="name-grade">5</span>학년, 이름을 눌러요</h1>
+        </div>
+        <div class="names" id="names" role="group" aria-label="이름"></div>
+        <p class="names-note">내 이름이 없으면 선생님께 말해 주세요.</p>
+      </div>
+
+      <form class="panel" id="p-pw" novalidate>
+        <div class="step-head">
+          <button class="back" type="button" data-go="name"><svg aria-hidden="true"><use href="#i-back"/></svg>이름</button>
+          <h1>비밀번호를 넣어요</h1>
+        </div>
+        <div class="who"><b id="who-name">김하늘</b><span id="who-grade">5학년</span><button type="button" data-go="name">내가 아니에요</button></div>
+        <label class="lbl" for="pw">비밀번호</label>
+        <input class="pw" id="pw" type="password" inputmode="numeric" autocomplete="current-password" placeholder="숫자 4자리" aria-describedby="pw-hint pw-err">
+        <p class="hint" id="pw-hint">비밀번호를 잊었으면 선생님께 물어보세요.</p>
+        <div class="err" id="pw-err" role="alert"><svg><use href="#i-alert"/></svg><span>비밀번호가 달라요. 한 번 더 천천히 눌러 보세요.</span></div>
+        <button class="go" id="go" type="submit" disabled><span class="t">마켓 입장하기</span><svg class="t" aria-hidden="true"><use href="#i-next"/></svg><span class="spin" aria-hidden="true"></span></button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<nav class="links" aria-label="다른 페이지">
+  <a href="#ranking">마켓 랭킹 <svg aria-hidden="true"><use href="#i-next"/></svg></a>
+  <a href="admin.html">교사 페이지 <svg aria-hidden="true"><use href="#i-next"/></svg></a>
+</nav>
+
+<script>
+(function(){
+  var roster={
+    3:["강도하","권나은","김시온","문하진","박지유","손우빈","신예린","오다온","유건우","이서율"],
+    4:["고은찬","김라희","남궁현","박소윤","서이안","안주원","이하람","전수아","조민결","홍지후"],
+    5:["김하늘","박서준","이도윤","최유나","정하린","강민재","윤서아","장지호","임채원","한예준","오시우","서지안"],
+    6:["구태오","김나린","노은호","류하은","백지환","송다인","양시현","이준서","차윤슬","황보율"]
+  };
+  var s={grade:null,name:null,step:"grade"};
+  var $=function(id){return document.getElementById(id)};
+  var panels={grade:$("p-grade"),name:$("p-name"),pw:$("p-pw")};
+  var pw=$("pw"),go=$("go"),err=$("pw-err");
+
+  function setField(id,val,empty){var el=$(id);el.textContent=val||empty;el.classList.toggle("empty",!val)}
+  function renderNames(){
+    var box=$("names");box.innerHTML="";
+    roster[s.grade].forEach(function(n){
+      var b=document.createElement("button");b.type="button";b.className="name";b.textContent=n;
+      b.addEventListener("click",function(){s.name=n;show("pw")});
+      box.appendChild(b);
+    });
+    $("name-grade").textContent=s.grade;
+  }
+  function show(step){
+    if(step!=="grade"&&!s.grade){s.grade=5}
+    if(step==="pw"&&!s.name){s.name=roster[s.grade][0]}
+    if(step==="grade"){s.name=null}
+    if(step==="name"){s.name=null;renderNames()}
+    s.step=step;
+    Object.keys(panels).forEach(function(k){panels[k].classList.toggle("on",k===step)});
+    document.querySelectorAll(".field").forEach(function(f){
+      if(f.dataset.go===step)f.setAttribute("aria-current","step");else f.removeAttribute("aria-current");
+    });
+    document.querySelectorAll(".grade").forEach(function(g){g.setAttribute("aria-pressed",String(+g.dataset.grade===s.grade))});
+    setField("f-grade",s.grade?s.grade+"학년":"","고르기 전");
+    setField("f-name",s.name,"고르기 전");
+    setField("f-pw","","입력 전");
+    if(step==="pw"){
+      $("who-name").textContent=s.name;$("who-grade").textContent=s.grade+"학년";
+      pw.value="";go.disabled=true;clearErr();
+      setTimeout(function(){pw.focus()},30);
+    }
+  }
+  function clearErr(){err.classList.remove("on");pw.removeAttribute("aria-invalid")}
+  document.querySelectorAll("[data-go]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.go)})});
+  document.querySelectorAll(".grade").forEach(function(b){b.addEventListener("click",function(){s.grade=+b.dataset.grade;show("name")})});
+  pw.addEventListener("input",function(){
+    go.disabled=!pw.value;clearErr();
+    setField("f-pw",pw.value?"●".repeat(Math.min(pw.value.length,6)):"","입력 전");
+  });
+  panels.pw.addEventListener("submit",function(e){
+    e.preventDefault();if(!pw.value)return;
+    go.classList.add("loading");go.disabled=true;
+    setTimeout(function(){
+      go.classList.remove("loading");
+      if(pw.value==="1234"){location.href="student.html";return}
+      err.classList.add("on");pw.setAttribute("aria-invalid","true");pw.select();go.disabled=false;
+    },450);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>곡수마켓 · 교사 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Gothic+A1:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#121418; --ink-2:#3d424a; --mute:#646a73;
+  --paper:#eceee9; --card:#ffffff; --line:#c9ccc5; --dim:#d9dbd5;
+  --sig:#ffc21a; --sig-press:#f0b000; --sig-soft:#fff3cc;
+  --ok:#1f6b3a;
+  --rule:4px;
+  --num:"Barlow","Gothic A1",sans-serif;
+  --kr:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--kr);color:var(--ink);background:var(--paper);font-size:15px;line-height:1.5;word-break:keep-all;min-height:100vh}
+::selection{background:var(--sig);color:var(--ink)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums lining-nums}
+.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* header */
+.top{background:var(--ink);color:#fff}
+.top .wrap{display:flex;align-items:center;gap:20px;min-height:68px}
+.top :focus-visible{outline-color:var(--sig)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.brand-plate{width:40px;height:40px;background:var(--sig);color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:22px;line-height:1}
+.brand-word{font-weight:900;font-size:21px;letter-spacing:-.02em}
+.brand-word span{font-weight:500;color:#c3c7cd;margin-left:6px}
+.today{margin-left:auto;font-size:14px;color:#c3c7cd;font-weight:500}
+.out{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:2px solid #4a4f57;font-weight:700;font-size:14px}
+.out:hover{border-color:#fff}
+
+/* status band */
+.band{display:grid;grid-template-columns:1fr 1fr 1.25fr;margin-top:28px;border:var(--rule) solid var(--ink);background:var(--card)}
+.cell{padding:16px 22px 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;min-height:104px}
+.cell + .cell{border-left:var(--rule) solid var(--ink)}
+.cell h2{font-size:16px;font-weight:800;align-self:flex-start}
+.cell b{font-family:var(--num);font-weight:800;font-size:56px;line-height:.9;letter-spacing:-.03em}
+.cell b small{font-family:var(--kr);font-size:20px;font-weight:800;margin-left:3px;letter-spacing:0}
+.cell-pending{background:var(--sig)}
+.cell-pending .cell-txt{display:flex;flex-direction:column;justify-content:space-between;align-self:stretch;gap:8px}
+.cell-pending a{font-size:14px;font-weight:800;display:inline-flex;align-items:center;gap:6px;text-underline-offset:3px}
+.cell-pending.clear{background:var(--card)}
+
+/* layout */
+.cols{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:28px;margin:28px auto 56px}
+.sec{background:var(--card);border:var(--rule) solid var(--ink);align-self:start;min-width:0}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 20px;border-bottom:var(--rule) solid var(--ink)}
+.sec-head h2{font-size:22px;font-weight:900;letter-spacing:-.02em}
+.sec-head h2 .num{margin-left:6px}
+.side{display:flex;flex-direction:column;gap:28px}
+.side .sec{align-self:stretch}
+
+/* grade filter */
+.seg{display:inline-flex;border:2px solid var(--ink)}
+.seg button{min-height:40px;min-width:48px;padding:0 12px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:5px}
+.seg button + button{border-left:2px solid var(--ink)}
+.seg button:hover{background:var(--sig-soft)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.seg .num{font-weight:700;font-size:13px;opacity:.75}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{font-size:13px;font-weight:700;color:var(--ink-2);text-align:left;padding:10px 12px;border-bottom:2px solid var(--ink);white-space:nowrap}
+td{padding:12px;border-bottom:2px solid var(--dim);vertical-align:middle}
+th:first-child,td:first-child{padding-left:20px}
+th:last-child,td:last-child{padding-right:20px}
+.r{text-align:right}
+.time{font-family:var(--num);font-weight:700;font-size:16px;white-space:nowrap}
+.time small{display:block;font-family:var(--kr);font-size:12px;font-weight:700;color:var(--ink-2)}
+.time .old{display:inline-block;background:var(--ink);color:#fff;padding:0 5px;font-size:12px}
+.who{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;white-space:nowrap}
+.plate{flex:none;width:28px;height:28px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--num);font-weight:800;font-size:16px;line-height:1}
+.what{font-weight:600;font-size:16px}
+.qty{font-family:var(--num);font-weight:700;font-size:17px;white-space:nowrap}
+.give{min-height:44px;padding:0 16px;font-weight:800;font-size:15px;background:var(--sig);border:3px solid var(--ink);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.give:hover{background:var(--sig-press)}
+tr.gone td{color:var(--mute);background:#f6f7f4}
+tr.gone .what,tr.gone .who{text-decoration:line-through;text-decoration-thickness:2px}
+tr.gone .plate{background:var(--line)}
+.undo-wrap{display:inline-flex;align-items:center;gap:10px;white-space:nowrap;font-weight:700;color:var(--ok);font-size:14px}
+.undo{font-weight:700;font-size:14px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 4px}
+.nothing{padding:40px 20px;text-align:center}
+.nothing b{display:block;font-size:20px;font-weight:900;margin-bottom:4px}
+.nothing p{color:var(--ink-2)}
+.sec-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px;font-size:14px;color:var(--ink-2)}
+.link{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--ink);text-underline-offset:3px;min-height:40px}
+
+.g-row a{display:flex;align-items:center;gap:10px;font-weight:900;font-size:17px;text-decoration:none;min-height:44px}
+.g-row a .plate{width:36px;height:36px;font-size:21px}
+.g-row:hover td{background:var(--sig-soft)}
+.g-row a:hover span{text-decoration:underline;text-underline-offset:3px}
+.tix{font-family:var(--num);font-weight:800;font-size:20px;line-height:1.1}
+.tix small{font-family:var(--kr);font-size:13px;margin-left:2px}
+.bar{display:block;height:6px;background:var(--dim);margin-top:6px;margin-left:auto;width:100%;max-width:120px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.cnt{font-family:var(--num);font-weight:700;font-size:17px}
+.avg{font-family:var(--num);font-weight:600;font-size:15px;color:var(--ink-2)}
+tfoot td{border-bottom:0;border-top:2px solid var(--ink);font-weight:800}
+
+/* directory */
+.dir{list-style:none}
+.dir li + li{border-top:2px solid var(--dim)}
+.dir a{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 16px;padding:14px 20px;text-decoration:none;min-height:68px}
+.dir b{font-size:18px;font-weight:900;letter-spacing:-.01em}
+.dir span{grid-column:1;font-size:14px;color:var(--ink-2)}
+.dir svg{grid-row:1/3;grid-column:2;transition:transform .2s var(--ease)}
+.dir a:hover{background:var(--sig)}
+.dir a:hover span{color:var(--ink)}
+.dir a:hover svg{transform:translateX(4px)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,24px);opacity:0;background:var(--ink);color:#fff;padding:12px 18px;font-weight:700;display:flex;gap:14px;align-items:center;z-index:20;transition:opacity .2s,transform .25s var(--ease);max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1040px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .wrap{padding:0 16px}
+  .today{display:none}
+  .brand-word span{display:none}
+  .out{margin-left:auto}
+  .band{grid-template-columns:1fr 1fr;margin-top:16px;border-width:3px}
+  .cell{min-height:88px;padding:12px 14px;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px}
+  .cell-pending{flex-direction:row;align-items:flex-end}
+  .seg{display:grid;grid-template-columns:1.2fr repeat(4,1fr);width:100%}
+  .seg button{min-width:0;padding:0 4px;justify-content:center;font-size:13px}
+  .seg button + button{border-left:2px solid var(--ink)}
+  .cell b{font-size:42px}
+  .cell-pending{grid-column:1/-1;border-left:0!important;border-top:3px solid var(--ink)}
+  .cell + .cell{border-left-width:3px}
+  .cols{margin-top:16px;gap:16px}
+  .sec{border-width:3px}
+  .sec-head{padding:12px 14px}
+  /* pending table becomes stacked rows */
+  .pend thead{display:none}
+  .pend tr{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;border-bottom:2px solid var(--dim)}
+  .pend td{padding:0!important;border:0;background:none!important}
+  .pend td.t{grid-column:1/-1}
+  .pend td.t .time{display:flex;gap:8px;align-items:baseline}
+  .pend td.t .time small{display:inline}
+  .pend td.w{grid-column:1}
+  .pend td.q{grid-column:2;grid-row:2;text-align:right}
+  .pend td.i{grid-column:1}
+  .pend td.a{grid-column:2;grid-row:3/5;align-self:end}
+  th:first-child,td:first-child{padding-left:14px}
+  th:last-child,td:last-child{padding-right:14px}
+  .grade-t .avg-c{display:none}
+  .dir a{padding:12px 14px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="곡수마켓 교사 대시보드">
+      <span class="brand-plate" aria-hidden="true">곡</span><span class="brand-word">곡수마켓<span>교사</span></span>
+    </a>
+    <p class="today">11월 3일 화요일</p>
+    <a class="out" href="main.html">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" aria-hidden="true"><path d="M14 4H4v16h10"/><path d="M10 12h11M17 8l4 4-4 4"/></svg>로그아웃</a>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <h1 class="sr">교사 대시보드</h1>
+  <section class="band" aria-label="오늘의 현황">
+    <div class="cell"><h2>총 학생 수</h2><b class="num">112<small>명</small></b></div>
+    <div class="cell"><h2>총 구매 건수</h2><b class="num">386<small>건</small></b></div>
+    <div class="cell cell-pending" id="pend-cell">
+      <div class="cell-txt"><h2>전달 대기</h2>
+        <a href="#pending" id="pend-link">아래 목록에서 처리
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg></a></div>
+      <b class="num" id="pend-num" aria-live="polite">7<small>건</small></b>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="sec" id="pending" aria-labelledby="pend-title">
+      <div class="sec-head">
+        <h2 id="pend-title">전달 대기<span class="num" id="pend-title-n">7</span><span class="sr">건</span></h2>
+        <div class="seg" role="group" aria-label="학년으로 거르기" id="seg"></div>
+      </div>
+      <table class="pend">
+        <thead><tr><th scope="col">주문 시간</th><th scope="col">학생</th><th scope="col">물건</th><th scope="col" class="r">수량</th><th scope="col" class="r"><span class="sr">처리</span></th></tr></thead>
+        <tbody id="pend-body"></tbody>
+      </table>
+      <div class="sec-foot">
+        <span>오래된 주문은 <b>어제</b> 표시가 붙어요.</span>
+        <a class="link" href="#purchases">구매 내역 전체 보기
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </section>
+
+    <div class="side">
+      <section class="sec" aria-labelledby="grade-title">
+        <div class="sec-head"><h2 id="grade-title">학년별 현황</h2></div>
+        <table class="grade-t">
+          <thead><tr><th scope="col">학년</th><th scope="col" class="r">학생 수</th><th scope="col" class="r">총 티켓</th><th scope="col" class="r avg-c">1인 평균</th></tr></thead>
+          <tbody id="grade-body"></tbody>
+          <tfoot><tr><td>합계</td><td class="r cnt">112명</td><td class="r tix">4,375<small>장</small></td><td class="r avg avg-c">39장</td></tr></tfoot>
+        </table>
+      </section>
+
+      <nav class="sec" aria-labelledby="menu-title">
+        <div class="sec-head"><h2 id="menu-title">빠른 메뉴</h2></div>
+        <ul class="dir">
+          <li><a href="#purchases"><b>구매 내역 관리</b><span>전달 상태 바꾸기, 지난 구매 찾기</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="#items"><b>상품 관리</b><span>상품 추가 · 수정 · 삭제, 재고 채우기</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="main.html"><b>학생 페이지</b><span>학생 화면 그대로 확인하기</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></li>
+          <li><a href="#funding"><b>공동 펀딩 관리</b><span>통합 모금 만들기, 진행 상황 보기</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var grades = [
+    {g:3,n:26,t:812},{g:4,n:28,t:1046},{g:5,n:30,t:1327},{g:6,n:28,t:1190}
+  ];
+  var pend = [
+    {id:1,day:"오늘",time:"10:42",g:5,who:"김하늘",what:"연필 세트",q:1},
+    {id:2,day:"오늘",time:"10:41",g:5,who:"김하늘",what:"반짝이 스티커",q:2},
+    {id:3,day:"오늘",time:"09:15",g:3,who:"송다올",what:"간식 쿠폰",q:1},
+    {id:4,day:"오늘",time:"08:51",g:6,who:"박지율",what:"자리 바꾸기권",q:1},
+    {id:5,day:"어제",time:"14:20",g:4,who:"김태오",what:"캐릭터 지우개",q:1},
+    {id:6,day:"어제",time:"13:05",g:6,who:"하지민",what:"보드게임 30분 이용권",q:1},
+    {id:7,day:"어제",time:"12:47",g:4,who:"조아린",what:"음악 신청곡권",q:1}
+  ];
+  var done = {}, filter = 0, toastT;
+  var $ = function(s){return document.querySelector(s)};
+  var fmt = function(n){ return n.toLocaleString("ko-KR"); };
+  var maxT = Math.max.apply(null, grades.map(function(x){return x.t}));
+
+  $("#grade-body").innerHTML = grades.map(function(x){
+    return '<tr class="g-row"><td><a href="#grade-'+x.g+'"><span class="plate" aria-hidden="true">'+x.g+'</span><span>'+x.g+'학년</span></a></td>'+
+      '<td class="r cnt">'+x.n+'명</td>'+
+      '<td class="r"><span class="tix">'+fmt(x.t)+'<small>장</small></span><span class="bar" aria-hidden="true"><i style="width:'+Math.round(x.t/maxT*100)+'%"></i></span></td>'+
+      '<td class="r avg avg-c">'+Math.round(x.t/x.n)+'장</td></tr>';
+  }).join("");
+
+  function left(g){ return pend.filter(function(p){ return !done[p.id] && (!g || p.g===g); }).length; }
+  function renderSeg(){
+    var opts = [0,3,4,5,6];
+    $("#seg").innerHTML = opts.map(function(g){
+      return '<button type="button" data-f="'+g+'" aria-pressed="'+(filter===g)+'">'+(g?g+'학년':'전체')+' <span class="num">'+left(g)+'</span></button>';
+    }).join("");
+  }
+  var check = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="square" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
+  function renderRows(){
+    var rows = pend.filter(function(p){ return !filter || p.g===filter; });
+    if(!rows.length || rows.every(function(p){return done[p.id]}) && !rows.some(function(p){return done[p.id]==="recent"})){
+      $("#pend-body").innerHTML = '<tr><td colspan="5" class="nothing"><b>전달할 물건이 없어요</b><p>'+(filter?filter+'학년은 모두 전달했어요. ':'')+'새 구매가 들어오면 여기에 바로 나타나요.</p></td></tr>';
+      return;
+    }
+    $("#pend-body").innerHTML = rows.filter(function(p){ return !done[p.id] || done[p.id]==="recent"; }).map(function(p){
+      var gone = !!done[p.id];
+      return '<tr'+(gone?' class="gone"':'')+'>'+
+        '<td class="t"><span class="time">'+p.time+'<small>'+(p.day==="어제"?'<span class="old">어제</span>':'오늘')+'</small></span></td>'+
+        '<td class="w"><span class="who"><span class="plate" aria-hidden="true">'+p.g+'</span>'+p.who+'<span class="sr">, '+p.g+'학년</span></span></td>'+
+        '<td class="i"><span class="what">'+p.what+'</span></td>'+
+        '<td class="q r"><span class="qty">×'+p.q+'</span></td>'+
+        '<td class="a r">'+(gone
+          ? '<span class="undo-wrap">'+check+'전달함<button class="undo" type="button" data-undo="'+p.id+'">되돌리기</button></span>'
+          : '<button class="give" type="button" data-give="'+p.id+'" aria-label="'+p.who+'에게 '+p.what+' 전달 완료">'+check+'전달 완료</button>')+'</td></tr>';
+    }).join("");
+  }
+  function renderCount(){
+    var n = left(0);
+    $("#pend-num").innerHTML = n+'<small>건</small>';
+    $("#pend-title-n").textContent = n;
+    $("#pend-cell").classList.toggle("clear", n===0);
+    $("#pend-link").firstChild.textContent = n ? "아래 목록에서 처리 " : "모두 전달했어요 ";
+  }
+  function all(){ renderSeg(); renderRows(); renderCount(); }
+  function toast(msg){
+    var t = $("#toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("on"); }, 2200);
+  }
+  document.addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    if(b.dataset.give){
+      var id = +b.dataset.give, p = pend.filter(function(x){return x.id===id})[0];
+      done[id] = "recent"; all(); toast(p.who+" · "+p.what+" 전달 완료");
+      var u = document.querySelector('[data-undo="'+id+'"]'); if(u) u.focus();
+      setTimeout(function(){ if(done[id]==="recent"){ done[id]=true; renderRows(); } }, 6000);
+    } else if(b.dataset.undo){
+      delete done[+b.dataset.undo]; all();
+      var g = document.querySelector('[data-give="'+b.dataset.undo+'"]'); if(g) g.focus();
+    } else if(b.dataset.f !== undefined){
+      filter = +b.dataset.f; all();
+    }
+  });
+  all();
+})();
+</script>
+</body>
+</html>
