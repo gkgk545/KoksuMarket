@@ -1,0 +1,93 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 18px 20px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--rule-2);
+}
+
+.closed .title {
+  color: var(--ink-2);
+}
+
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font: 800 17px/1.35 var(--ui);
+}
+
+.desc {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rowActions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.person {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 10px 0;
+}
+
+.person + .person {
+  border-top: 1px solid var(--rule-2);
+}
+
+.personName {
+  font-weight: 800;
+}
+
+.personTime {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.amount {
+  font: 400 20px/1 var(--display);
+  white-space: nowrap;
+}
+
+.amount small {
+  font: 700 13px/1 var(--ui);
+  margin-left: 2px;
+}
+
+.detailTop {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 860px) {
+  .row { grid-template-columns: 1fr; }
+  .rowActions { justify-self: start; }
+}

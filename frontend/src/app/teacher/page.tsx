@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, CircleAlert } from "lucide-react";
 import { login, isAuthenticated } from "@/lib/teacherAuth";
+import styles from "../login.module.css";
 
 export default function TeacherLoginPage() {
     const router = useRouter();
@@ -21,6 +23,7 @@ export default function TeacherLoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!password) return;
         setLoading(true);
         setError("");
 
@@ -28,74 +31,80 @@ export default function TeacherLoginPage() {
         if (success) {
             router.push("/teacher/dashboard");
         } else {
-            setError("비밀번호가 틀렸습니다.");
+            setError("비밀번호가 맞지 않아요. 다시 입력해 주세요.");
         }
         setLoading(false);
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
-            >
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                        곡수마켓 교사
-                    </h1>
-                    <p className="text-gray-500 mt-2">교사 관리 페이지 로그인</p>
+        <div className={styles.page}>
+            <main className={styles.wrap}>
+                <div className={styles.ticket}>
+                    <aside className={styles.stub} aria-label="교사용 입장권">
+                        <p className={styles.brand}>
+                            곡수마켓<small>교사 관리 페이지</small>
+                        </p>
+                        <p className={styles.serial}>교사용 · {new Date().getFullYear()}</p>
+                        <p className={styles.stubNote}>
+                            학생 티켓, 상품, 구매 전달, 공동 펀딩을 관리해요.
+                        </p>
+                    </aside>
+
+                    <section className={styles.body}>
+                        <form className={styles.panel} onSubmit={handleLogin} noValidate>
+                            <div className={styles.stepHead}>
+                                <h1>교사 비밀번호를 넣어요</h1>
+                            </div>
+                            <label className={styles.label} htmlFor="teacher-pw">교사 비밀번호</label>
+                            <input
+                                id="teacher-pw"
+                                className={styles.pw}
+                                type="password"
+                                autoComplete="current-password"
+                                placeholder="비밀번호를 입력하세요"
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    setError("");
+                                }}
+                                aria-invalid={error ? true : undefined}
+                                aria-describedby={error ? "teacher-err" : undefined}
+                                autoFocus
+                            />
+                            <label className={styles.remember}>
+                                <input
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                />
+                                이 기기에서 7일 동안 로그인 유지
+                            </label>
+                            {error && (
+                                <p className={styles.err} id="teacher-err" role="alert">
+                                    <CircleAlert aria-hidden="true" />
+                                    {error}
+                                </p>
+                            )}
+                            <button type="submit" className={styles.go} disabled={loading || !password}>
+                                {loading ? (
+                                    <span className={styles.spin} aria-label="확인 중" />
+                                ) : (
+                                    <>
+                                        관리 페이지로
+                                        <ChevronRight aria-hidden="true" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </section>
                 </div>
+            </main>
 
-                <form onSubmit={handleLogin} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            교사 비밀번호
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                            placeholder="비밀번호를 입력하세요"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
-                            id="rememberMe"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        />
-                        <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-600">
-                            로그인 유지 (7일)
-                        </label>
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
-                    >
-                        {loading ? "로그인 중..." : "로그인"}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <a href="/" className="text-sm text-gray-500 hover:text-indigo-600 transition-colors">
-                        ← 학생 페이지로 돌아가기
-                    </a>
-                </div>
-            </motion.div>
+            <nav className={styles.links} aria-label="다른 페이지">
+                <Link href="/">
+                    <ChevronLeft aria-hidden="true" /> 학생 페이지로
+                </Link>
+            </nav>
         </div>
     );
 }

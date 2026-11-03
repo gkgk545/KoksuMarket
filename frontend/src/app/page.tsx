@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { api, Student } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import { ChevronRight, School, User, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, CircleAlert } from "lucide-react";
+import { api, Student } from "@/lib/api";
+import styles from "./login.module.css";
+
+type Step = "grade" | "student" | "password";
+
+const GRADES = [3, 4, 5, 6];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"grade" | "student" | "password">("grade");
+  const [step, setStep] = useState<Step>("grade");
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -28,7 +31,7 @@ export default function LoginPage() {
         })
         .catch((err) => {
           console.error(err);
-          setError("Failed to load students.");
+          setError("학생 목록을 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.");
           setLoading(false);
         });
     }
@@ -36,6 +39,7 @@ export default function LoginPage() {
 
   const handleGradeSelect = (grade: number) => {
     setSelectedGrade(grade);
+    setSelectedStudent(null);
     setStep("student");
     setError(null);
   };
@@ -54,171 +58,170 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.login(selectedStudent.id, password);
-      // Store student info in localStorage (or context)
       localStorage.setItem("user", JSON.stringify(res.student));
-      router.push("/market"); // Navigate to market
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+      router.push("/market");
+    } catch {
+      setError("비밀번호가 달라요. 한 번 더 천천히 눌러 보세요.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Back button logic
-  const goBack = () => {
+  // Jump back to an earlier step from the stub or the back buttons
+  const goTo = (target: Step) => {
     setError(null);
-    if (step === "password") setStep("student");
-    else if (step === "student") {
-      setStep("grade");
+    if (target === "grade") {
       setSelectedGrade(null);
+      setSelectedStudent(null);
     }
+    if (target === "student") setSelectedStudent(null);
+    setStep(target);
   };
 
+  const fields: { step: Step; label: string; value: string | null; empty: string; enabled: boolean }[] = [
+    { step: "grade", label: "학년", value: selectedGrade ? `${selectedGrade}학년` : null, empty: "고르기 전", enabled: true },
+    { step: "student", label: "이름", value: selectedStudent?.name ?? null, empty: "고르기 전", enabled: !!selectedGrade },
+    { step: "password", label: "비밀번호", value: password ? "●".repeat(Math.min(password.length, 6)) : null, empty: "입력 전", enabled: !!selectedStudent },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 overflow-hidden relative">
-
-      {/* Abstract Background Shapes */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
-      <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-3xl p-8 w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-            곡수마켓
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            곡수마켓에 오신 것을 환영합니다!
-          </p>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {step === "grade" && (
-            <motion.div
-              key="grade"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
-            >
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                <School className="w-5 h-5 text-purple-500" />
-                학년을 선택하세요
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {[3, 4, 5, 6].map((grade) => (
+    <div className={styles.page}>
+      <main className={styles.wrap}>
+        <div className={styles.ticket}>
+          <aside className={styles.stub} aria-label="입장권">
+            <p className={styles.brand}>
+              곡수마켓<small>우리 학교 티켓 가게</small>
+            </p>
+            <p className={styles.serial}>입장권 · {new Date().getFullYear()}</p>
+            <ol className={styles.fields} aria-label="입장 단계">
+              {fields.map((f) => (
+                <li key={f.step}>
                   <button
-                    key={grade}
-                    onClick={() => handleGradeSelect(grade)}
-                    className="h-24 rounded-2xl bg-white dark:bg-slate-800 border-2 border-transparent hover:border-purple-500 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center justify-center gap-2 group"
+                    type="button"
+                    className={styles.field}
+                    aria-current={step === f.step ? "step" : undefined}
+                    disabled={!f.enabled || step === f.step}
+                    onClick={() => goTo(f.step)}
                   >
-                    <span className="text-3xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-purple-600 group-hover:scale-110 transition-transform">{grade}</span>
-                    <span className="text-xs text-gray-700">학년</span>
+                    <span className={styles.fieldKey}>{f.label}</span>
+                    <span className={f.value ? styles.fieldValue : styles.fieldEmpty}>{f.value ?? f.empty}</span>
                   </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                </li>
+              ))}
+            </ol>
+          </aside>
 
-          {step === "student" && (
-            <motion.div
-              key="student"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-500" />
-                  이름을 선택하세요
-                </h2>
-                <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="h-48 flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+          <section className={styles.body} aria-live="polite">
+            {step === "grade" && (
+              <div className={styles.panel} key="grade">
+                <div className={styles.stepHead}>
+                  <h1>몇 학년이에요?</h1>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto p-1 custom-scrollbar">
-                  {students.map((student) => (
-                    <button
-                      key={student.id}
-                      onClick={() => handleStudentSelect(student)}
-                      className="p-4 rounded-xl bg-white dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-slate-700 border border-gray-100 dark:border-slate-700 transition-colors text-left"
-                    >
-                      <span className="font-medium text-gray-700 dark:text-gray-200">{student.name}</span>
+                <div className={styles.grades} role="group" aria-label="학년">
+                  {GRADES.map((grade) => (
+                    <button key={grade} type="button" className={styles.grade} onClick={() => handleGradeSelect(grade)}>
+                      <span className={styles.gradeInner}>
+                        <b>{grade}</b>
+                        <span>학년</span>
+                      </span>
                     </button>
                   ))}
                 </div>
-              )}
-            </motion.div>
-          )}
-
-          {step === "password" && (
-            <motion.div
-              key="password"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-pink-500" />
-                  비밀번호 입력
-                </h2>
-                <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-500" />
-                </button>
               </div>
+            )}
 
-              <div className="text-center p-4 bg-purple-50 dark:bg-slate-800/50 rounded-xl">
-                <p className="text-sm text-gray-500">선택한 학생</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white">{selectedStudent?.name} ({selectedStudent?.grade}학년)</p>
+            {step === "student" && (
+              <div className={styles.panel} key="student">
+                <div className={styles.stepHead}>
+                  <button type="button" className={styles.back} onClick={() => goTo("grade")}>
+                    <ChevronLeft aria-hidden="true" />
+                    학년
+                  </button>
+                  <h1>{selectedGrade}학년, 이름을 눌러요</h1>
+                </div>
+                {loading ? (
+                  <p className={styles.loading}>이름을 불러오는 중…</p>
+                ) : error ? (
+                  <p className={styles.err} role="alert">
+                    <CircleAlert aria-hidden="true" />
+                    {error}
+                  </p>
+                ) : (
+                  <>
+                    <div className={styles.names} role="group" aria-label="이름">
+                      {students.map((student) => (
+                        <button key={student.id} type="button" className={styles.name} onClick={() => handleStudentSelect(student)}>
+                          {student.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className={styles.note}>내 이름이 없으면 선생님께 말해 주세요.</p>
+                  </>
+                )}
               </div>
+            )}
 
-              <form onSubmit={handleLogin} className="space-y-4">
+            {step === "password" && selectedStudent && (
+              <form className={styles.panel} key="password" onSubmit={handleLogin} noValidate>
+                <div className={styles.stepHead}>
+                  <button type="button" className={styles.back} onClick={() => goTo("student")}>
+                    <ChevronLeft aria-hidden="true" />
+                    이름
+                  </button>
+                  <h1>비밀번호를 넣어요</h1>
+                </div>
+                <div className={styles.who}>
+                  <b>{selectedStudent.name}</b>
+                  <span>{selectedStudent.grade}학년</span>
+                  <button type="button" onClick={() => goTo("student")}>내가 아니에요</button>
+                </div>
+                <label className={styles.label} htmlFor="pw">비밀번호</label>
                 <input
+                  id="pw"
+                  className={styles.pw}
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   placeholder="비밀번호를 입력하세요"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-transparent focus:border-purple-500 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError(null);
+                  }}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby="pw-hint pw-err"
                   autoFocus
                 />
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-                <button
-                  type="submit"
-                  disabled={loading || !password}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold shadow-lg hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "로그인"}
+                <p className={styles.hint} id="pw-hint">비밀번호를 잊었으면 선생님께 물어보세요.</p>
+                {error && (
+                  <p className={styles.err} id="pw-err" role="alert">
+                    <CircleAlert aria-hidden="true" />
+                    {error}
+                  </p>
+                )}
+                <button type="submit" className={styles.go} disabled={loading || !password}>
+                  {loading ? (
+                    <span className={styles.spin} aria-label="확인 중" />
+                  ) : (
+                    <>
+                      마켓 입장하기
+                      <ChevronRight aria-hidden="true" />
+                    </>
+                  )}
                 </button>
               </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </section>
+        </div>
+      </main>
 
-      </motion.div>
-
-      {/* Footer Links */}
-      <div className="absolute bottom-6 flex gap-6 text-sm text-gray-500 font-medium">
-        <a href="/ranking" className="hover:text-amber-500 transition-colors flex items-center gap-1">
-          🏆 마켓 랭킹 <ChevronRight className="w-3 h-3" />
+      <nav className={styles.links} aria-label="다른 페이지">
+        <a href="/ranking">
+          마켓 랭킹 <ChevronRight aria-hidden="true" />
         </a>
-        <a href="/teacher" className="hover:text-purple-600 transition-colors flex items-center gap-1">
-          교사 페이지 <ChevronRight className="w-3 h-3" />
+        <a href="/teacher">
+          교사 페이지 <ChevronRight aria-hidden="true" />
         </a>
-      </div>
+      </nav>
     </div>
   );
 }

@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { X, Trash2, CreditCard, Loader2 } from "lucide-react";
 import { api, Student } from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-import { ConfirmationModal } from "./ConfirmationModal";
+import styles from "@/app/market/market.module.css";
 
 interface CartDrawerProps {
     isOpen: boolean;
@@ -16,22 +14,80 @@ interface CartDrawerProps {
     onPurchaseComplete: () => void;
 }
 
+interface PaidReceipt {
+    lines: { id: number; name: string; cost: number; quantity: number }[];
+    total: number;
+    remaining: number;
+}
+
+function todayLabel() {
+    const d = new Date();
+    const day = "일월화수목금토"[d.getDay()];
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${day})`;
+}
+
 export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }: CartDrawerProps) {
-    const { items, removeItem, totalCost, clearCart } = useCart();
+    const { items, addItem, removeItem, removeLine, totalCost, clearCart } = useCart();
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [paid, setPaid] = useState<PaidReceipt | null>(null);
+    const drawerRef = useRef<HTMLElement>(null);
+    const closeRef = useRef<HTMLButtonElement>(null);
+
+    const balance = currentUser?.ticket_count ?? 0;
+    const left = balance - totalCost;
+
+    const handleClose = () => {
+        setPaid(null);
+        setConfirming(false);
+        setError(null);
+        onClose();
+    };
+
+    // Focus, scroll lock, Escape and a simple focus trap while open
+    useEffect(() => {
+        if (!isOpen) return;
+        const lastFocus = document.activeElement as HTMLElement | null;
+        document.body.style.overflow = "hidden";
+        closeRef.current?.focus();
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                handleClose();
+                return;
+            }
+            if (e.key !== "Tab" || !drawerRef.current) return;
+            const focusable = drawerRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]");
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            document.body.style.overflow = "";
+            lastFocus?.focus();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const handleCheckout = async () => {
         if (!currentUser) return;
-        if (currentUser.ticket_count < totalCost) {
-            setMsg({ type: 'error', text: '티켓이 부족합니다!' });
+        if (left < 0) {
+            setError(`티켓이 ${-left}장 모자라요.`);
             return;
         }
 
         setLoading(true);
-        setMsg(null);
-        setIsConfirmOpen(false); // Close the confirmation modal
+        setError(null);
 
         try {
             const cartItems = items.map(item => ({
@@ -45,125 +101,170 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
 
             // Update user in localStorage
             localStorage.setItem("user", JSON.stringify(result.student));
-            
+
             // Refresh user tickets and trigger items refresh hook
-            onPurchaseComplete(); 
+            onPurchaseComplete();
             window.dispatchEvent(new Event("purchase_complete"));
             window.dispatchEvent(new Event("auth_refreshed"));
-            
+
+            setPaid({
+                lines: items.map(({ id, name, cost, quantity }) => ({ id, name, cost, quantity })),
+                total: totalCost,
+                remaining: result.student?.ticket_count ?? result.remaining_tickets ?? left,
+            });
             clearCart();
-            setMsg({ type: 'success', text: '구매가 완료되었습니다!' });
-            
-            // Dispatch event for confetti micro-interaction
-            window.dispatchEvent(new Event("confetti_celebrate"));
-
-            setTimeout(() => {
-                onClose();
-                setMsg(null);
-            }, 1500);
-
-        } catch (err: any) {
-            setMsg({ type: 'error', text: err.message || '구매 중 오류가 발생했습니다.' });
+        } catch (err) {
+            setError((err instanceof Error && err.message) || "구매 중 문제가 생겼어요. 다시 눌러 주세요.");
         }
 
+        setConfirming(false);
         setLoading(false);
     };
 
+    if (!isOpen) return null;
+
+    const head = (
+        <div className={styles.rTop}>
+            <b>곡수마켓</b>
+            <span>
+                {currentUser ? `${currentUser.grade}학년 ${currentUser.name} · ` : ""}
+                {todayLabel()}
+            </span>
+        </div>
+    );
+
+    let receipt: React.ReactNode;
+    let foot: React.ReactNode;
+
+    if (paid) {
+        receipt = (
+            <>
+                {head}
+                <ul className={styles.lines}>
+                    {paid.lines.map((l) => (
+                        <li key={l.id} className={styles.line}>
+                            <div>
+                                <div className={styles.lineName}>{l.name}</div>
+                                <div className={styles.lineUnit}>{l.cost}장 × {l.quantity}</div>
+                            </div>
+                            <div className={styles.lineSub}>{l.cost * l.quantity}<small>장</small></div>
+                        </li>
+                    ))}
+                </ul>
+                <dl className={styles.sum}>
+                    <div className={styles.total}><dt>합계</dt><dd>{paid.total}장</dd></div>
+                    <div className={styles.after}><dt>남은 티켓</dt><dd>{paid.remaining}장</dd></div>
+                </dl>
+                <span className={styles.paid} role="img" aria-label="구매 완료 도장">구매 완료</span>
+            </>
+        );
+        foot = (
+            <>
+                <p className={styles.dDone}>
+                    <b>구매가 끝났어요.</b> 선생님이 물건을 건네주면 구매 기록에 ‘전달 완료’로 바뀌어요.
+                </p>
+                <button className={styles.btn} type="button" onClick={handleClose}>상품 목록으로</button>
+            </>
+        );
+    } else if (items.length === 0) {
+        receipt = (
+            <>
+                {head}
+                <div className={styles.empty}>
+                    <b>장바구니가 비었어요</b>
+                    <p>상품 아래쪽 ‘담기’를 누르면<br />여기에 담겨요.</p>
+                </div>
+            </>
+        );
+        foot = <button className={styles.btn} type="button" onClick={handleClose}>물건 고르러 가기</button>;
+    } else {
+        receipt = (
+            <>
+                {head}
+                <ul className={styles.lines}>
+                    {items.map((item) => (
+                        <li key={item.id} className={styles.line}>
+                            <div>
+                                <div className={styles.lineName}>{item.name}</div>
+                                <div className={styles.lineUnit}>{item.cost}장 × {item.quantity}</div>
+                            </div>
+                            <div className={styles.lineSub}>{item.cost * item.quantity}<small>장</small></div>
+                            <div className={styles.lineRow}>
+                                <div className={styles.stepper} role="group" aria-label={`${item.name} 개수`}>
+                                    <button type="button" onClick={() => removeItem(item.id)} aria-label="하나 빼기" disabled={loading}>
+                                        <Minus aria-hidden="true" />
+                                    </button>
+                                    <output>{item.quantity}</output>
+                                    <button
+                                        type="button"
+                                        onClick={() => addItem({ ...item, quantity: item.stock })}
+                                        aria-label="하나 더"
+                                        disabled={loading || item.quantity >= item.stock}
+                                    >
+                                        <Plus aria-hidden="true" />
+                                    </button>
+                                </div>
+                                <button className={styles.rm} type="button" onClick={() => removeLine(item.id)} disabled={loading}>
+                                    빼기
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <dl className={styles.sum}>
+                    <div className={styles.total}><dt>합계</dt><dd>{totalCost}장</dd></div>
+                    <div><dt>보유 티켓</dt><dd>{balance}장</dd></div>
+                    <div className={cn(styles.after, left < 0 && styles.neg)}>
+                        <dt>구매 후 남는 티켓</dt>
+                        <dd>{left < 0 ? `모자라요 (${-left}장)` : `${left}장`}</dd>
+                    </div>
+                </dl>
+            </>
+        );
+        foot = confirming ? (
+            <>
+                <p className={styles.dConfirm}>티켓 {totalCost}장을 쓸까요? 산 뒤에는 취소할 수 없어요.</p>
+                <div className={styles.confirmRow}>
+                    <button className={cn(styles.btn, styles.ghost)} type="button" onClick={() => setConfirming(false)} disabled={loading}>
+                        취소
+                    </button>
+                    <button className={styles.btn} type="button" onClick={handleCheckout} disabled={loading}>
+                        {loading ? "사는 중…" : "네, 살게요"}
+                    </button>
+                </div>
+            </>
+        ) : (
+            <>
+                <button className={styles.btn} type="button" onClick={() => setConfirming(true)} disabled={left < 0}>
+                    {totalCost}장으로 구매하기
+                </button>
+                {left < 0 ? (
+                    <p className={cn(styles.dNote, styles.bad)}>티켓이 {-left}장 모자라요. 물건을 조금 빼 주세요.</p>
+                ) : (
+                    <p className={styles.dNote}>구매하면 선생님께 전달 요청이 가요.</p>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
-            <ConfirmationModal
-                isOpen={isConfirmOpen}
-                onClose={() => setIsConfirmOpen(false)}
-                onConfirm={handleCheckout}
-                title="구매 확인"
-                description={`총 ${totalCost} 티켓이 차감됩니다. 정말 구매하시겠습니까? 구매 후에는 취소할 수 없습니다.`}
-            />
-            <AnimatePresence>
-                {isOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
-                            exit={{ opacity: 0 }}
-                            onClick={onClose}
-                            className="fixed inset-0 bg-black z-40"
-                        />
-                        <motion.div
-                            initial={{ x: "100%" }}
-                            animate={{ x: 0 }}
-                            exit={{ x: "100%" }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col"
-                        >
-                            <div className="p-4 border-b dark:border-slate-800 flex items-center justify-between">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <CreditCard className="w-5 h-5 text-purple-500" />
-                                    장바구니
-                                </h2>
-                                <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                {items.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                                        <p>장바구니가 비었습니다.</p>
-                                    </div>
-                                ) : (
-                                    items.map((item) => (
-                                        <div key={item.id} className="flex gap-4 items-center bg-gray-50 dark:bg-slate-800 p-3 rounded-xl">
-                                            {item.image_url ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
-                                            ) : (
-                                                <div className="w-16 h-16 bg-gray-200 rounded-lg" />
-                                            )}
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold">{item.name}</h4>
-                                                <p className="text-sm text-gray-500">{item.cost} Tickets</p>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-bold">x{item.quantity}</span>
-                                                <button
-                                                    onClick={() => removeItem(item.id)}
-                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            <div className="p-6 bg-gray-50 dark:bg-slate-800 border-t dark:border-slate-700 space-y-4">
-                                <div className="flex justify-between text-lg font-bold">
-                                    <span>총 합계</span>
-                                    <span className="text-purple-600">{totalCost} Tickets</span>
-                                </div>
-
-                                {msg && (
-                                    <div className={cn(
-                                        "p-3 rounded-lg text-center text-sm font-medium",
-                                        msg.type === 'success' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                    )}>
-                                        {msg.text}
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => setIsConfirmOpen(true)}
-                                    disabled={items.length === 0 || loading}
-                                    className="w-full py-4 rounded-xl bg-purple-600 text-white font-bold text-lg shadow-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {loading ? <Loader2 className="animate-spin" /> : "결제하기"}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+            <div className={styles.scrim} onClick={handleClose} />
+            <aside ref={drawerRef} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
+                <div className={styles.dHead}>
+                    <h2 id="cart-title">장바구니</h2>
+                    <button ref={closeRef} className={styles.x} type="button" onClick={handleClose} aria-label="장바구니 닫기">
+                        <X aria-hidden="true" />
+                    </button>
+                </div>
+                <div className={styles.dBody}>
+                    <div className={styles.receipt}>{receipt}</div>
+                </div>
+                <div className={styles.dFoot}>
+                    {error && <p className={styles.dError} role="alert">{error}</p>}
+                    {foot}
+                </div>
+            </aside>
         </>
     );
 }

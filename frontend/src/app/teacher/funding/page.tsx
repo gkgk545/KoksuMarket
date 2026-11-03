@@ -2,30 +2,57 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { isAuthenticated } from "@/lib/teacherAuth";
-import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader2, Users, Target } from "lucide-react";
-import { motion } from "framer-motion";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Funding, FundingParticipation, api } from "@/lib/api";
+import { TeacherShell } from "@/components/TeacherShell";
+import { Dialog } from "@/components/Dialog";
+import { FundingStrip } from "@/components/FundingStrip";
+import { useConfirm, useToast } from "@/components/feedback";
+import { cn } from "@/lib/utils";
+import t from "../teacher.module.css";
+import styles from "./funding.module.css";
+
+type FundingForm = {
+    id?: number;
+    title: string;
+    description: string;
+    target_amount: number;
+    image_url: string;
+    is_completed: boolean;
+};
+
+const EMPTY_FORM: FundingForm = { title: "", description: "", target_amount: 100, image_url: "", is_completed: false };
+
+function stamp(iso: string) {
+    const d = new Date(iso);
+    const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
+}
 
 export default function TeacherFundingPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [fundings, setFundings] = useState<Funding[]>([]);
-    
-    // Form and modals
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [editingFunding, setEditingFunding] = useState<Funding | null>(null);
-    const [newFunding, setNewFunding] = useState({
-        title: "",
-        description: "",
-        target_amount: 100,
-        image_url: "",
-    });
-
-    // Detail View
+    const [form, setForm] = useState<FundingForm | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
     const [viewingDetail, setViewingDetail] = useState<{ funding: Funding; participations: FundingParticipation[] } | null>(null);
+    const [confirm, confirmDialog] = useConfirm();
+    const [toast, toastElement] = useToast();
+
+    const loadFundings = async () => {
+        try {
+            const data = await api.getFundings();
+            setFundings(data);
+        } catch (err) {
+            console.error(err);
+            toast("펀딩을 불러오지 못했어요. 새로고침해 주세요.", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -33,72 +60,73 @@ export default function TeacherFundingPage() {
             return;
         }
         loadFundings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [router]);
 
-    const loadFundings = async () => {
-        setLoading(true);
-        try {
-            const data = await api.getFundings();
-            setFundings(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    const openAdd = () => {
+        setFormError(null);
+        setForm({ ...EMPTY_FORM });
     };
 
-    const addFunding = async () => {
-        if (!newFunding.title.trim()) {
-            alert("제목을 입력해주세요.");
+    const openEdit = (f: Funding) => {
+        setFormError(null);
+        setForm({
+            id: f.id,
+            title: f.title,
+            description: f.description ?? "",
+            target_amount: f.target_amount,
+            image_url: f.image_url ?? "",
+            is_completed: f.is_completed,
+        });
+    };
+
+    const saveFunding = async () => {
+        if (!form) return;
+        if (!form.title.trim()) {
+            setFormError("펀딩 이름을 적어 주세요.");
+            return;
+        }
+        if (form.target_amount < 1) {
+            setFormError("목표는 1장 이상이어야 해요.");
             return;
         }
 
-        const { error } = await supabase.from("market_funding").insert({
-            title: newFunding.title.trim(),
-            description: newFunding.description || null,
-            target_amount: newFunding.target_amount,
-            image_url: newFunding.image_url || null,
+        setSaving(true);
+        const payload = {
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            target_amount: form.target_amount,
+            image_url: form.image_url.trim() || null,
+        };
+        const { error } = form.id
+            ? await supabase.from("market_funding").update({ ...payload, is_completed: form.is_completed }).eq("id", form.id)
+            : await supabase.from("market_funding").insert(payload);
+        setSaving(false);
+
+        if (error) {
+            setFormError(`저장하지 못했어요: ${error.message}`);
+            return;
+        }
+        toast(form.id ? `‘${payload.title}’을(를) 고쳤어요.` : `‘${payload.title}’ 펀딩을 열었어요.`);
+        setForm(null);
+        loadFundings();
+    };
+
+    const deleteFunding = async (f: Funding) => {
+        const ok = await confirm({
+            title: `‘${f.title}’ 펀딩을 지울까요?`,
+            message: "참여 기록도 모두 지워지고, 학생들이 낸 티켓은 자동으로 돌려주지 않아요.\n돌려줘야 한다면 학생·티켓 화면에서 직접 더해 주세요.",
+            confirmLabel: "펀딩 지우기",
+            danger: true,
         });
+        if (!ok) return;
+
+        const { error } = await supabase.from("market_funding").delete().eq("id", f.id);
 
         if (error) {
-            alert("펀딩 추가 실패: " + error.message);
+            toast(`지우지 못했어요: ${error.message}`, "error");
         } else {
-            setShowAddModal(false);
-            setNewFunding({ title: "", description: "", target_amount: 100, image_url: "" });
-            loadFundings();
-        }
-    };
-
-    const updateFunding = async () => {
-        if (!editingFunding) return;
-
-        const { error } = await supabase
-            .from("market_funding")
-            .update({
-                title: editingFunding.title,
-                description: editingFunding.description,
-                target_amount: editingFunding.target_amount,
-                image_url: editingFunding.image_url,
-                is_completed: editingFunding.is_completed,
-            })
-            .eq("id", editingFunding.id);
-
-        if (error) {
-            alert("펀딩 수정 실패: " + error.message);
-        } else {
-            setEditingFunding(null);
-            loadFundings();
-        }
-    };
-
-    const deleteFunding = async (fundingId: number, title: string) => {
-        if (!confirm(`정말 "${title}" 펀딩을 삭제하시겠습니까? 참여 기록도 모두 사라지며 환불되지 않습니다 (환불이 필요하면 개별 메뉴에서 수동 처리 필요).`)) return;
-
-        const { error } = await supabase.from("market_funding").delete().eq("id", fundingId);
-
-        if (error) {
-            alert("삭제 실패: " + error.message);
-        } else {
+            toast(`‘${f.title}’ 펀딩을 지웠어요.`);
             loadFundings();
         }
     };
@@ -107,269 +135,189 @@ export default function TeacherFundingPage() {
         try {
             const detail = await api.getFundingDetail(funding.id);
             setViewingDetail(detail);
-        } catch (err: any) {
-            alert("상세 정보 로드 실패: " + err.message);
+        } catch (err) {
+            toast(`참여 내역을 불러오지 못했어요: ${(err as Error).message}`, "error");
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-        );
-    }
+    const isClosed = (f: Funding) => f.is_completed;
+    const openCount = fundings.filter((f) => !isClosed(f)).length;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/teacher/dashboard"
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </Link>
-                            <h1 className="text-2xl font-bold text-pink-600">공동 펀딩 관리</h1>
-                        </div>
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-2 bg-pink-600 text-white px-3 py-2 rounded-lg hover:bg-pink-700 transition-colors text-sm"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>새 펀딩 만들기</span>
-                        </button>
-                    </div>
+        <TeacherShell>
+            <div className={t.pageHead}>
+                <h1>공동 펀딩</h1>
+                {!loading && <p>모으는 중 {openCount}개 · 마감 {fundings.length - openCount}개</p>}
+                <div className={t.actions}>
+                    <button type="button" className={t.btn} onClick={openAdd}>
+                        <Plus aria-hidden="true" />
+                        새 펀딩 열기
+                    </button>
                 </div>
-            </header>
+            </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {fundings.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                        등록된 펀딩이 없습니다.
+            <div className={t.panel}>
+                {loading ? (
+                    <p className={t.loadingPage}>펀딩을 불러오는 중…</p>
+                ) : fundings.length === 0 ? (
+                    <div className={t.empty}>
+                        <b>아직 연 펀딩이 없어요</b>
+                        <p>반 전체가 티켓을 모아 살 물건이 있다면 ‘새 펀딩 열기’를 눌러 보세요.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {fundings.map((funding, index) => {
-                            const progress = Math.min(100, Math.round((funding.current_amount / funding.target_amount) * 100));
+                    <ul className={styles.list}>
+                        {fundings.map((f) => {
+                            const closed = isClosed(f);
+                            const reached = f.current_amount >= f.target_amount;
                             return (
-                                <motion.div
-                                    key={funding.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className={`bg-white rounded-xl shadow-sm border overflow-hidden ${funding.is_completed ? 'opacity-70 grayscale border-gray-300' : 'border-pink-200'}`}
-                                >
-                                    <div className="p-5">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold text-xl">{funding.title}</h3>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${funding.is_completed ? 'bg-gray-200 text-gray-600' : 'bg-pink-100 text-pink-700'}`}>
-                                                {funding.is_completed ? "완료됨" : "진행중"}
-                                            </span>
+                                <li key={f.id} className={cn(styles.row, closed && styles.closed)}>
+                                    <div>
+                                        <div className={styles.titleLine}>
+                                            <span className={styles.title}>{f.title}</span>
+                                            {closed ? (
+                                                <span className={t.tag}>마감</span>
+                                            ) : reached ? (
+                                                <span className={cn(t.tag, t.tagWait)}>목표 달성 · 마감 처리 전</span>
+                                            ) : (
+                                                <span className={cn(t.tag, t.tagWait)}>모으는 중</span>
+                                            )}
                                         </div>
-                                        <div className="mt-4 mb-4">
-                                            <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                                <span>현재 {funding.current_amount}티켓</span>
-                                                <span>목표 {funding.target_amount}티켓</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div className="bg-pink-500 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-                                            </div>
-                                            <div className="text-right text-xs mt-1 text-gray-400">{progress}%</div>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => viewDetails(funding)}
-                                                className="flex-1 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-1 text-sm font-medium"
-                                            >
-                                                <Users className="w-4 h-4" /> 내역
-                                            </button>
-                                            <button
-                                                onClick={() => setEditingFunding(funding)}
-                                                className="p-1.5 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => deleteFunding(funding.id, funding.title)}
-                                                className="p-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                        {f.description && <p className={styles.desc}>{f.description}</p>}
                                     </div>
-                                </motion.div>
+                                    <FundingStrip current={f.current_amount} target={f.target_amount} done={closed || reached} onPaper compact />
+                                    <span className={styles.rowActions}>
+                                        <button type="button" className={cn(t.btn, t.quiet, t.sm)} onClick={() => viewDetails(f)}>
+                                            <Users aria-hidden="true" />
+                                            참여 내역
+                                        </button>
+                                        <button type="button" className={cn(t.btn, t.quiet, t.sm)} onClick={() => openEdit(f)}>
+                                            <Pencil aria-hidden="true" />
+                                            고치기
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={cn(t.btn, t.quiet, t.sm, t.dangerText)}
+                                            onClick={() => deleteFunding(f)}
+                                            aria-label={`${f.title} 지우기`}
+                                        >
+                                            <Trash2 aria-hidden="true" />
+                                        </button>
+                                    </span>
+                                </li>
                             );
                         })}
-                    </div>
+                    </ul>
                 )}
-            </main>
+            </div>
 
-            {/* View Details Modal */}
             {viewingDetail && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
-                    >
-                        <div className="flex items-center justify-between border-b pb-4 mb-4">
-                            <div>
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <Target className="w-5 h-5 text-pink-600" />
-                                    {viewingDetail.funding.title} 참여 내역
-                                </h2>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    총 {viewingDetail.funding.current_amount} / {viewingDetail.funding.target_amount} 모금
-                                </p>
-                            </div>
-                            <button onClick={() => setViewingDetail(null)} className="p-2 hover:bg-gray-100 rounded-full">
-                                <X className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-                        
-                        <div className="flex-1 overflow-y-auto pr-2">
-                            {viewingDetail.participations.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">아직 참여한 학생이 없습니다.</div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {viewingDetail.participations.map((part) => (
-                                        <div key={part.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
-                                            <div>
-                                                <div className="font-bold">{part.student_name}</div>
-                                                <div className="text-xs text-gray-400">{new Date(part.timestamp).toLocaleString("ko-KR")}</div>
-                                            </div>
-                                            <div className="text-lg font-bold text-pink-600">+{part.amount} 장</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
-                </div>
+                <Dialog
+                    title={`${viewingDetail.funding.title} 참여 내역`}
+                    description={`참여 ${viewingDetail.participations.length}번`}
+                    onClose={() => setViewingDetail(null)}
+                    width={480}
+                >
+                    <div className={styles.detailTop}>
+                        <FundingStrip
+                            current={viewingDetail.funding.current_amount}
+                            target={viewingDetail.funding.target_amount}
+                            done={viewingDetail.funding.is_completed}
+                            onPaper
+                            compact
+                        />
+                    </div>
+                    {viewingDetail.participations.length === 0 ? (
+                        <p className={t.muted}>아직 참여한 학생이 없어요.</p>
+                    ) : (
+                        <ul className={styles.people}>
+                            {viewingDetail.participations.map((part) => (
+                                <li key={part.id} className={styles.person}>
+                                    <span className={styles.personName}>{part.student_name}</span>
+                                    <span className={styles.amount}>+{part.amount}<small>장</small></span>
+                                    <span className={styles.personTime}>{stamp(part.timestamp)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Dialog>
             )}
 
-            {/* Add/Edit Modal */}
-            {(showAddModal || editingFunding) && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold">
-                                {editingFunding ? "펀딩 수정" : "새 펀딩 만들기"}
-                            </h2>
-                            <button
-                                onClick={() => {
-                                    setShowAddModal(false);
-                                    setEditingFunding(null);
-                                }}
-                                className="p-1 hover:bg-gray-100 rounded"
-                            >
-                                <X className="w-5 h-5" />
+            {form && (
+                <Dialog
+                    title={form.id ? "펀딩 고치기" : "새 펀딩 열기"}
+                    onClose={() => setForm(null)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(t.btn, t.ghost)} onClick={() => setForm(null)}>취소</button>
+                            <button type="button" className={t.btn} onClick={saveFunding} disabled={saving}>
+                                {saving ? "저장하는 중…" : form.id ? "고친 내용 저장" : "펀딩 열기"}
                             </button>
+                        </>
+                    }
+                >
+                    <form className={t.form} onSubmit={(e) => { e.preventDefault(); saveFunding(); }}>
+                        {formError && <p className={t.error} role="alert">{formError}</p>}
+                        <div>
+                            <label className={t.label} htmlFor="fund-title">펀딩 이름</label>
+                            <input
+                                id="fund-title"
+                                className={t.input}
+                                value={form.title}
+                                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                placeholder="예: 우리 반 피자 파티"
+                            />
                         </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">펀딩명</label>
-                                <input
-                                    type="text"
-                                    value={editingFunding ? editingFunding.title : newFunding.title}
-                                    onChange={(e) =>
-                                        editingFunding
-                                            ? setEditingFunding({ ...editingFunding, title: e.target.value })
-                                            : setNewFunding({ ...newFunding, title: e.target.value })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500"
-                                    placeholder="예: 우리 반 피자 파티"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">목표 티켓 수</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={editingFunding ? editingFunding.target_amount : newFunding.target_amount}
-                                    onChange={(e) =>
-                                        editingFunding
-                                            ? setEditingFunding({ ...editingFunding, target_amount: Number(e.target.value) })
-                                            : setNewFunding({ ...newFunding, target_amount: Number(e.target.value) })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">설명 (선택)</label>
-                                <textarea
-                                    value={editingFunding ? editingFunding.description || "" : newFunding.description}
-                                    onChange={(e) =>
-                                        editingFunding
-                                            ? setEditingFunding({ ...editingFunding, description: e.target.value })
-                                            : setNewFunding({ ...newFunding, description: e.target.value })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500"
-                                    rows={2}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">이미지 URL (선택)</label>
-                                <input
-                                    type="text"
-                                    value={editingFunding ? editingFunding.image_url || "" : newFunding.image_url}
-                                    onChange={(e) =>
-                                        editingFunding
-                                            ? setEditingFunding({ ...editingFunding, image_url: e.target.value })
-                                            : setNewFunding({ ...newFunding, image_url: e.target.value })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500"
-                                    placeholder="https://"
-                                />
-                            </div>
-                            
-                            {editingFunding && (
-                                <div className="mt-4 p-3 bg-gray-50 border rounded-lg flex items-center justify-between">
-                                    <span className="text-sm font-medium">펀딩 성공/종료 처리</span>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only peer" 
-                                            checked={editingFunding.is_completed}
-                                            onChange={(e) => setEditingFunding({ ...editingFunding, is_completed: e.target.checked })}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
-                                    </label>
-                                </div>
-                            )}
+                        <div>
+                            <label className={t.label} htmlFor="fund-target">목표 티켓 수</label>
+                            <input
+                                id="fund-target"
+                                className={t.input}
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                value={form.target_amount}
+                                onChange={(e) => setForm({ ...form, target_amount: Number(e.target.value) })}
+                            />
                         </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => {
-                                    setShowAddModal(false);
-                                    setEditingFunding(null);
-                                }}
-                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={editingFunding ? updateFunding : addFunding}
-                                className="flex-1 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center justify-center gap-2"
-                            >
-                                <Save className="w-4 h-4" />
-                                {editingFunding ? "수정" : "생성"}
-                            </button>
+                        <div>
+                            <label className={t.label} htmlFor="fund-desc">설명 (선택)</label>
+                            <textarea
+                                id="fund-desc"
+                                className={t.input}
+                                rows={3}
+                                value={form.description}
+                                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                placeholder="무엇을 사는지, 언제까지 모으는지 적어 주세요."
+                            />
                         </div>
-                    </motion.div>
-                </div>
+                        <div>
+                            <label className={t.label} htmlFor="fund-image">사진 주소 (선택)</label>
+                            <input
+                                id="fund-image"
+                                className={t.input}
+                                value={form.image_url}
+                                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                                placeholder="https://"
+                            />
+                        </div>
+                        {form.id && (
+                            <label className={t.switchRow}>
+                                펀딩 마감하기 (학생이 더 낼 수 없어요)
+                                <input
+                                    type="checkbox"
+                                    className={t.check}
+                                    checked={form.is_completed}
+                                    onChange={(e) => setForm({ ...form, is_completed: e.target.checked })}
+                                />
+                            </label>
+                        )}
+                        <button type="submit" hidden />
+                    </form>
+                </Dialog>
             )}
-        </div>
+
+            {confirmDialog}
+            {toastElement}
+        </TeacherShell>
     );
 }

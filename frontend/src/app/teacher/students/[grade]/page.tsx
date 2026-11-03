@@ -5,8 +5,16 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabase, Student } from "@/lib/supabase";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
-import { ArrowLeft, Plus, Minus, Save, Trash2, UserPlus, Loader2, Upload, Download, Check, X, KeyRound } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Download, FileDown, KeyRound, Minus, Plus, Search, Ticket, Trash2, Upload, UserPlus, X } from "lucide-react";
+import { TeacherShell } from "@/components/TeacherShell";
+import { Dialog } from "@/components/Dialog";
+import { useConfirm, useToast } from "@/components/feedback";
+import { cn } from "@/lib/utils";
+import t from "../../teacher.module.css";
+import styles from "./students.module.css";
+
+const GRADES = [3, 4, 5, 6];
+
 export default function GradeStudentsPage() {
     const router = useRouter();
     const params = useParams();
@@ -17,35 +25,31 @@ export default function GradeStudentsPage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editTickets, setEditTickets] = useState(0);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [confirm, confirmDialog] = useConfirm();
+    const [toast, toastElement] = useToast();
+
+    // Add student
     const [showAddModal, setShowAddModal] = useState(false);
     const [newStudent, setNewStudent] = useState({ name: "", password: "1234", ticket_count: 0 });
 
     // Bulk selection
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [showBulkTicketModal, setShowBulkTicketModal] = useState(false);
-    const [bulkTicketAmount, setBulkTicketAmount] = useState(0);
+    const [bulkTicketAmount, setBulkTicketAmount] = useState(1);
     const [bulkTicketAction, setBulkTicketAction] = useState<"add" | "subtract">("add");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [bulkSaving, setBulkSaving] = useState(false);
 
     // Password change
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordTarget, setPasswordTarget] = useState<{ id: number; name: string } | null>(null);
     const [newPassword, setNewPassword] = useState("");
+    const [dialogError, setDialogError] = useState<string | null>(null);
 
     const filteredStudents = students.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    useEffect(() => {
-        if (!isAuthenticated()) {
-            router.push("/teacher");
-            return;
-        }
-        loadStudents();
-    }, [router, grade]);
-
     const loadStudents = async () => {
-        setLoading(true);
         const { data, error } = await supabase
             .from("market_student")
             .select("*")
@@ -54,77 +58,84 @@ export default function GradeStudentsPage() {
 
         if (error) {
             console.error("Failed to load students:", error);
+            toast("학생 목록을 불러오지 못했어요. 새로고침해 주세요.", "error");
         } else {
             setStudents(data || []);
         }
         setLoading(false);
     };
 
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            router.push("/teacher");
+            return;
+        }
+        loadStudents();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router, grade]);
+
     const startEdit = (student: Student) => {
         setEditingId(student.id);
         setEditTickets(student.ticket_count);
     };
 
-    const saveTickets = async (studentId: number) => {
+    const saveTickets = async (student: Student) => {
         const { error } = await supabase
             .from("market_student")
             .update({ ticket_count: editTickets })
-            .eq("id", studentId);
+            .eq("id", student.id);
 
         if (error) {
-            alert("저장 실패: " + error.message);
+            toast(`저장하지 못했어요: ${error.message}`, "error");
         } else {
             setEditingId(null);
-            loadStudents();
+            setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, ticket_count: editTickets } : s)));
+            toast(`${student.name}의 티켓을 ${editTickets}장으로 바꿨어요.`);
         }
     };
 
-    const deleteStudent = async (studentId: number, studentName: string) => {
+    const deleteStudent = async (student: Student) => {
         // 먼저 구매 기록이 있는지 확인
         const { count } = await supabase
             .from("market_purchase")
             .select("*", { count: "exact", head: true })
-            .eq("student_id", studentId);
+            .eq("student_id", student.id);
 
-        let confirmMessage = `정말 ${studentName} 학생을 삭제하시겠습니까?`;
-        if (count && count > 0) {
-            confirmMessage = `${studentName} 학생은 ${count}건의 구매 기록이 있습니다.\n삭제하면 해당 구매 기록도 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`;
-        }
-
-        if (!confirm(confirmMessage)) return;
+        const ok = await confirm({
+            title: `${student.name} 학생을 지울까요?`,
+            message: count && count > 0
+                ? `구매 기록 ${count}건도 함께 지워져요. 지운 학생은 되살릴 수 없어요.`
+                : "지운 학생은 되살릴 수 없어요.",
+            confirmLabel: "학생 지우기",
+            danger: true,
+        });
+        if (!ok) return;
 
         // 먼저 관련 구매 기록 삭제
         if (count && count > 0) {
             await supabase
                 .from("market_purchase")
                 .delete()
-                .eq("student_id", studentId);
+                .eq("student_id", student.id);
         }
 
-        // 학생 삭제
         const { error } = await supabase
             .from("market_student")
             .delete()
-            .eq("id", studentId);
+            .eq("id", student.id);
 
         if (error) {
-            alert("삭제 실패: " + error.message);
+            toast(`지우지 못했어요: ${error.message}`, "error");
         } else {
+            toast(`${student.name} 학생을 지웠어요.`);
             loadStudents();
         }
-    };
-
-    // Password change
-    const openPasswordModal = (studentId: number, studentName: string) => {
-        setPasswordTarget({ id: studentId, name: studentName });
-        setNewPassword("");
-        setShowPasswordModal(true);
     };
 
     const changePassword = async () => {
         if (!passwordTarget) return;
         if (!newPassword.trim()) {
-            alert("새 비밀번호를 입력해주세요.");
+            setDialogError("새 비밀번호를 적어 주세요.");
             return;
         }
 
@@ -134,10 +145,9 @@ export default function GradeStudentsPage() {
             .eq("id", passwordTarget.id);
 
         if (error) {
-            alert("비밀번호 변경 실패: " + error.message);
+            setDialogError(`바꾸지 못했어요: ${error.message}`);
         } else {
-            alert(`${passwordTarget.name} 학생의 비밀번호가 변경되었습니다.`);
-            setShowPasswordModal(false);
+            toast(`${passwordTarget.name}의 비밀번호를 바꿨어요.`);
             setPasswordTarget(null);
             setNewPassword("");
         }
@@ -145,7 +155,7 @@ export default function GradeStudentsPage() {
 
     const addStudent = async () => {
         if (!newStudent.name.trim()) {
-            alert("이름을 입력해주세요.");
+            setDialogError("이름을 적어 주세요.");
             return;
         }
 
@@ -159,8 +169,9 @@ export default function GradeStudentsPage() {
             });
 
         if (error) {
-            alert("학생 추가 실패: " + error.message);
+            setDialogError(`추가하지 못했어요: ${error.message}`);
         } else {
+            toast(`${newStudent.name.trim()} 학생을 추가했어요.`);
             setShowAddModal(false);
             setNewStudent({ name: "", password: "1234", ticket_count: 0 });
             loadStudents();
@@ -185,22 +196,21 @@ export default function GradeStudentsPage() {
             grade,
         }));
 
+        if (fileInputRef.current) fileInputRef.current.value = "";
+
         if (studentsToAdd.length === 0) {
-            alert("추가할 학생이 없습니다. CSV 형식을 확인해주세요.\n형식: 이름,비밀번호,티켓수");
+            toast("추가할 학생이 없어요. 양식(이름,비밀번호,티켓수)을 확인해 주세요.", "error");
             return;
         }
 
         const { error } = await supabase.from("market_student").insert(studentsToAdd);
 
         if (error) {
-            alert("업로드 실패: " + error.message);
+            toast(`올리지 못했어요: ${error.message}`, "error");
         } else {
-            alert(`${studentsToAdd.length}명의 학생이 추가되었습니다.`);
+            toast(`학생 ${studentsToAdd.length}명을 추가했어요.`);
             loadStudents();
         }
-
-        // Reset file input
-        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     // CSV Export
@@ -224,30 +234,24 @@ export default function GradeStudentsPage() {
 
     // Selection
     const toggleSelect = (id: number) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-        }
-        setSelectedIds(newSet);
+        const next = new Set(selectedIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedIds(next);
     };
 
+    const allShownSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selectedIds.has(s.id));
     const selectAll = () => {
-        if (selectedIds.size === students.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(students.map(s => s.id)));
-        }
+        const next = new Set(selectedIds);
+        filteredStudents.forEach((s) => (allShownSelected ? next.delete(s.id) : next.add(s.id)));
+        setSelectedIds(next);
     };
 
     // Bulk ticket management
     const applyBulkTickets = async () => {
-        if (selectedIds.size === 0) {
-            alert("선택된 학생이 없습니다.");
-            return;
-        }
+        if (selectedIds.size === 0 || bulkTicketAmount < 1) return;
 
+        setBulkSaving(true);
         const updates = students
             .filter(s => selectedIds.has(s.id))
             .map(s => ({
@@ -263,370 +267,337 @@ export default function GradeStudentsPage() {
                 .update({ ticket_count: update.ticket_count })
                 .eq("id", update.id);
         }
+        setBulkSaving(false);
 
         setShowBulkTicketModal(false);
         setSelectedIds(new Set());
-        setBulkTicketAmount(0);
         loadStudents();
-        alert(`${updates.length}명의 티켓이 ${bulkTicketAction === "add" ? "부여" : "회수"}되었습니다.`);
+        toast(bulkTicketAction === "add"
+            ? `${updates.length}명에게 티켓 ${bulkTicketAmount}장씩 주었어요.`
+            : `${updates.length}명에게서 티켓 ${bulkTicketAmount}장씩 거둬들였어요.`);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-        );
-    }
+    const ticketTotal = students.reduce((sum, s) => sum + s.ticket_count, 0);
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Hidden file input */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                accept=".csv"
-                onChange={handleCSVUpload}
-                className="hidden"
-            />
+        <TeacherShell>
+            <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCSVUpload} hidden />
 
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/teacher/dashboard"
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </Link>
-                            <h1 className="text-2xl font-bold text-indigo-600">{grade}학년 학생 관리</h1>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {selectedIds.size > 0 && (
-                                <button
-                                    onClick={() => setShowBulkTicketModal(true)}
-                                    className="flex items-center gap-2 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    <span>선택 학생 티켓 관리 ({selectedIds.size}명)</span>
-                                </button>
-                            )}
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
-                            >
-                                <Upload className="w-4 h-4" />
-                                <span>CSV 업로드</span>
-                            </button>
-                            <button
-                                onClick={handleDownloadTemplate}
-                                className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>양식 다운로드</span>
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                disabled={students.length === 0}
-                                className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>내보내기</span>
-                            </button>
-                            <button
-                                onClick={() => setShowAddModal(true)}
-                                className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-                            >
-                                <UserPlus className="w-4 h-4" />
-                                <span>학생 추가</span>
-                            </button>
-                        </div>
-                    </div>
+            <div className={t.pageHead}>
+                <h1>{grade}학년 학생·티켓</h1>
+                <nav className={t.seg} aria-label="학년 바꾸기">
+                    {GRADES.map((g) => (
+                        <Link key={g} href={`/teacher/students/${g}`} aria-current={g === grade ? "page" : undefined}>
+                            {g}학년
+                        </Link>
+                    ))}
+                </nav>
+                <div className={t.actions}>
+                    <button type="button" className={cn(t.btn, t.quiet)} onClick={handleDownloadTemplate}>
+                        <FileDown aria-hidden="true" />
+                        CSV 양식
+                    </button>
+                    <button type="button" className={cn(t.btn, t.ghost)} onClick={() => fileInputRef.current?.click()}>
+                        <Upload aria-hidden="true" />
+                        CSV로 추가
+                    </button>
+                    <button type="button" className={cn(t.btn, t.ghost)} onClick={handleExport} disabled={students.length === 0}>
+                        <Download aria-hidden="true" />
+                        내보내기
+                    </button>
+                    <button type="button" className={t.btn} onClick={() => { setDialogError(null); setShowAddModal(true); }}>
+                        <UserPlus aria-hidden="true" />
+                        학생 추가
+                    </button>
                 </div>
-            </header>
+            </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {students.length > 0 && (
-                    <div className="mb-6">
+            <div className={t.panel}>
+                <div className={cn(t.pHead, styles.toolbar)}>
+                    <label className={t.search}>
+                        <Search aria-hidden="true" />
+                        <span className="sr-only">학생 이름으로 찾기</span>
                         <input
-                            type="text"
-                            placeholder="학생 이름으로 검색..."
+                            className={t.input}
+                            type="search"
+                            placeholder="학생 이름으로 찾기"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                         />
-                    </div>
-                )}
+                    </label>
+                    {!loading && (
+                        <p className={styles.summary}>
+                            <b>{students.length}명</b> · 티켓 합계 <b>{ticketTotal}장</b>
+                        </p>
+                    )}
+                </div>
 
-                {students.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                        등록된 학생이 없습니다.
+                {loading ? (
+                    <p className={t.loadingPage}>학생 목록을 불러오는 중…</p>
+                ) : students.length === 0 ? (
+                    <div className={t.empty}>
+                        <b>{grade}학년에 등록된 학생이 없어요</b>
+                        <p>‘학생 추가’로 한 명씩 넣거나, CSV 양식으로 반 전체를 한 번에 올릴 수 있어요.</p>
                     </div>
                 ) : filteredStudents.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-sm">
-                        검색 결과가 없습니다.
+                    <div className={t.empty}>
+                        <b>‘{searchQuery}’과(와) 맞는 학생이 없어요</b>
+                        <p>이름을 다시 확인해 주세요.</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b">
+                    <div className={t.scroll}>
+                        <table className={t.table}>
+                            <thead>
                                 <tr>
-                                    <th className="px-4 py-4 text-left">
+                                    <th scope="col" className={styles.checkCell}>
                                         <input
                                             type="checkbox"
-                                            checked={selectedIds.size === students.length && students.length > 0}
+                                            className={t.check}
+                                            checked={allShownSelected}
                                             onChange={selectAll}
-                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
+                                            aria-label="보이는 학생 모두 고르기"
                                         />
                                     </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">이름</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">티켓 보유량</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">비밀번호</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">작업</th>
+                                    <th scope="col">이름</th>
+                                    <th scope="col">보유 티켓</th>
+                                    <th scope="col" className={t.end}><span className="sr-only">작업</span></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
-                                {filteredStudents.map((student, index) => (
-                                    <motion.tr
-                                        key={student.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.02 }}
-                                        className={`hover:bg-gray-50 ${selectedIds.has(student.id) ? "bg-indigo-50" : ""}`}
-                                    >
-                                        <td className="px-4 py-4">
+                            <tbody>
+                                {filteredStudents.map((student) => (
+                                    <tr key={student.id} className={cn(selectedIds.has(student.id) && t.selected)}>
+                                        <td className={styles.checkCell}>
                                             <input
                                                 type="checkbox"
+                                                className={t.check}
                                                 checked={selectedIds.has(student.id)}
                                                 onChange={() => toggleSelect(student.id)}
-                                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
+                                                aria-label={`${student.name} 고르기`}
                                             />
                                         </td>
-                                        <td className="px-6 py-4 font-medium">{student.name}</td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className={t.strong}>{student.name}</td>
+                                        <td>
                                             {editingId === student.id ? (
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => setEditTickets(Math.max(0, editTickets - 1))}
-                                                        className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                                                    >
-                                                        <Minus className="w-4 h-4" />
+                                                <span className={styles.editor}>
+                                                    <span className={styles.stepper}>
+                                                        <button type="button" onClick={() => setEditTickets(Math.max(0, editTickets - 1))} aria-label="1장 빼기">
+                                                            <Minus aria-hidden="true" />
+                                                        </button>
+                                                        <input
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            min={0}
+                                                            value={editTickets}
+                                                            onChange={(e) => setEditTickets(Math.max(0, Number(e.target.value)))}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") saveTickets(student);
+                                                                if (e.key === "Escape") setEditingId(null);
+                                                            }}
+                                                            aria-label={`${student.name} 티켓 수`}
+                                                            autoFocus
+                                                        />
+                                                        <button type="button" onClick={() => setEditTickets(editTickets + 1)} aria-label="1장 더하기">
+                                                            <Plus aria-hidden="true" />
+                                                        </button>
+                                                    </span>
+                                                    <button type="button" className={cn(t.btn, t.sm)} onClick={() => saveTickets(student)}>
+                                                        <Check aria-hidden="true" />
+                                                        저장
                                                     </button>
-                                                    <input
-                                                        type="number"
-                                                        value={editTickets}
-                                                        onChange={(e) => setEditTickets(Number(e.target.value))}
-                                                        className="w-20 text-center border rounded py-1"
-                                                    />
-                                                    <button
-                                                        onClick={() => setEditTickets(editTickets + 1)}
-                                                        className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                                                    >
-                                                        <Plus className="w-4 h-4" />
+                                                    <button type="button" className={cn(t.btn, t.quiet, t.sm)} onClick={() => setEditingId(null)} aria-label="취소">
+                                                        <X aria-hidden="true" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => saveTickets(student.id)}
-                                                        className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
-                                                    >
-                                                        <Save className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span
-                                                    onClick={() => startEdit(student)}
-                                                    className="text-purple-600 font-bold cursor-pointer hover:underline"
-                                                >
-                                                    {student.ticket_count} 장
                                                 </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className={styles.ticketBtn}
+                                                    onClick={() => startEdit(student)}
+                                                    aria-label={`${student.name} 티켓 ${student.ticket_count}장, 눌러서 고치기`}
+                                                >
+                                                    <b>{student.ticket_count}</b>
+                                                    <span className={t.u}>장</span>
+                                                </button>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className={t.end}>
                                             <button
-                                                onClick={() => openPasswordModal(student.id, student.name)}
-                                                className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-700 p-1 text-xs"
-                                                title="비밀번호 변경"
+                                                type="button"
+                                                className={cn(t.btn, t.quiet, t.sm)}
+                                                onClick={() => {
+                                                    setDialogError(null);
+                                                    setNewPassword("");
+                                                    setPasswordTarget({ id: student.id, name: student.name });
+                                                }}
                                             >
-                                                <KeyRound className="w-4 h-4" />
-                                                <span>변경</span>
+                                                <KeyRound aria-hidden="true" />
+                                                비밀번호
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={cn(t.btn, t.quiet, t.sm, t.dangerText)}
+                                                onClick={() => deleteStudent(student)}
+                                                aria-label={`${student.name} 지우기`}
+                                            >
+                                                <Trash2 aria-hidden="true" />
                                             </button>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => deleteStudent(student.id, student.name)}
-                                                className="text-red-500 hover:text-red-700 p-1"
-                                                title="삭제"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </td>
-                                    </motion.tr>
+                                    </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
-            </main>
+            </div>
 
-            {/* Add Student Modal */}
+            {selectedIds.size > 0 && (
+                <div className={styles.bulk} role="region" aria-label="고른 학생">
+                    <p>{selectedIds.size}명 골랐어요</p>
+                    <button
+                        type="button"
+                        className={styles.bulkBtn}
+                        onClick={() => { setBulkTicketAction("add"); setBulkTicketAmount(1); setShowBulkTicketModal(true); }}
+                    >
+                        <Ticket aria-hidden="true" />
+                        티켓 주기
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.clear}
+                        onClick={() => { setBulkTicketAction("subtract"); setBulkTicketAmount(1); setShowBulkTicketModal(true); }}
+                    >
+                        티켓 거둬들이기
+                    </button>
+                    <button type="button" className={styles.clear} onClick={() => setSelectedIds(new Set())}>
+                        고르기 취소
+                    </button>
+                </div>
+            )}
+
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <h2 className="text-xl font-bold mb-4">{grade}학년 학생 추가</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
-                                <input
-                                    type="text"
-                                    value={newStudent.name}
-                                    onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="학생 이름"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-                                <input
-                                    type="text"
-                                    value={newStudent.password}
-                                    onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="기본: 1234"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">초기 티켓 수</label>
-                                <input
-                                    type="number"
-                                    value={newStudent.ticket_count}
-                                    onChange={(e) => setNewStudent({ ...newStudent, ticket_count: Number(e.target.value) })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={addStudent}
-                                className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                            >
-                                추가
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-            {/* Bulk Ticket Modal */}
-            {showBulkTicketModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <h2 className="text-xl font-bold mb-4">일괄 티켓 관리</h2>
-                        <p className="text-gray-600 mb-4">선택된 학생: {selectedIds.size}명</p>
-
-                        <div className="space-y-4">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setBulkTicketAction("add")}
-                                    className={`flex-1 py-2 rounded-lg border ${bulkTicketAction === "add" ? "bg-green-600 text-white border-green-600" : "hover:bg-gray-50"}`}
-                                >
-                                    티켓 부여
-                                </button>
-                                <button
-                                    onClick={() => setBulkTicketAction("subtract")}
-                                    className={`flex-1 py-2 rounded-lg border ${bulkTicketAction === "subtract" ? "bg-red-600 text-white border-red-600" : "hover:bg-gray-50"}`}
-                                >
-                                    티켓 회수
-                                </button>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">티켓 수</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={bulkTicketAmount}
-                                    onChange={(e) => setBulkTicketAmount(Number(e.target.value))}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setShowBulkTicketModal(false)}
-                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={applyBulkTickets}
-                                className={`flex-1 py-2 text-white rounded-lg ${bulkTicketAction === "add" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-                            >
-                                {bulkTicketAction === "add" ? "부여하기" : "회수하기"}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-            {/* Password Change Modal */}
-            {showPasswordModal && passwordTarget && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-                            <KeyRound className="w-5 h-5 text-indigo-600" />
-                            비밀번호 변경
-                        </h2>
-                        <p className="text-gray-500 text-sm mb-4">
-                            <span className="font-semibold text-gray-700">{passwordTarget.name}</span> 학생의 비밀번호를 변경합니다.
-                        </p>
+                <Dialog
+                    title={`${grade}학년 학생 추가`}
+                    onClose={() => setShowAddModal(false)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(t.btn, t.ghost)} onClick={() => setShowAddModal(false)}>취소</button>
+                            <button type="button" className={t.btn} onClick={addStudent}>추가하기</button>
+                        </>
+                    }
+                >
+                    <form className={t.form} onSubmit={(e) => { e.preventDefault(); addStudent(); }}>
+                        {dialogError && <p className={t.error} role="alert">{dialogError}</p>}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                            <label className={t.label} htmlFor="new-name">이름</label>
                             <input
-                                type="text"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                placeholder="새 비밀번호 입력"
-                                autoFocus
+                                id="new-name"
+                                className={t.input}
+                                value={newStudent.name}
+                                onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                                placeholder="학생 이름"
                             />
                         </div>
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => { setShowPasswordModal(false); setPasswordTarget(null); }}
-                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={changePassword}
-                                className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                            >
-                                변경하기
-                            </button>
+                        <div className={t.row2}>
+                            <div>
+                                <label className={t.label} htmlFor="new-pw">비밀번호</label>
+                                <input
+                                    id="new-pw"
+                                    className={t.input}
+                                    value={newStudent.password}
+                                    onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
+                                />
+                                <p className={t.hint}>학생이 로그인할 때 써요.</p>
+                            </div>
+                            <div>
+                                <label className={t.label} htmlFor="new-tickets">처음 티켓</label>
+                                <input
+                                    id="new-tickets"
+                                    className={t.input}
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={newStudent.ticket_count}
+                                    onChange={(e) => setNewStudent({ ...newStudent, ticket_count: Number(e.target.value) })}
+                                />
+                            </div>
                         </div>
-                    </motion.div>
-                </div>
+                        <button type="submit" hidden />
+                    </form>
+                </Dialog>
             )}
-        </div>
+
+            {showBulkTicketModal && (
+                <Dialog
+                    title={bulkTicketAction === "add" ? "티켓 주기" : "티켓 거둬들이기"}
+                    description={`고른 학생 ${selectedIds.size}명`}
+                    onClose={() => setShowBulkTicketModal(false)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(t.btn, t.ghost)} onClick={() => setShowBulkTicketModal(false)}>취소</button>
+                            <button type="button" className={t.btn} onClick={applyBulkTickets} disabled={bulkSaving || bulkTicketAmount < 1}>
+                                {bulkSaving ? "바꾸는 중…" : bulkTicketAction === "add" ? `${bulkTicketAmount}장씩 주기` : `${bulkTicketAmount}장씩 거둬들이기`}
+                            </button>
+                        </>
+                    }
+                >
+                    <div className={t.form}>
+                        <div className={t.choice} role="group" aria-label="주기 또는 거둬들이기">
+                            <button type="button" aria-pressed={bulkTicketAction === "add"} onClick={() => setBulkTicketAction("add")}>주기</button>
+                            <button type="button" aria-pressed={bulkTicketAction === "subtract"} onClick={() => setBulkTicketAction("subtract")}>거둬들이기</button>
+                        </div>
+                        <div>
+                            <label className={t.label} htmlFor="bulk-amount">한 명당 티켓 수</label>
+                            <input
+                                id="bulk-amount"
+                                className={t.input}
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                value={bulkTicketAmount}
+                                onChange={(e) => setBulkTicketAmount(Math.max(0, Number(e.target.value)))}
+                            />
+                        </div>
+                        <p className={styles.preview}>
+                            {bulkTicketAction === "add"
+                                ? <>모두 합쳐 <b>{bulkTicketAmount * selectedIds.size}장</b>을 줘요.</>
+                                : <>한 명당 <b>{bulkTicketAmount}장</b>씩 빼요. 티켓이 모자란 학생은 0장이 돼요.</>}
+                        </p>
+                    </div>
+                </Dialog>
+            )}
+
+            {passwordTarget && (
+                <Dialog
+                    title="비밀번호 바꾸기"
+                    description={`${passwordTarget.name} 학생`}
+                    onClose={() => setPasswordTarget(null)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(t.btn, t.ghost)} onClick={() => setPasswordTarget(null)}>취소</button>
+                            <button type="button" className={t.btn} onClick={changePassword}>바꾸기</button>
+                        </>
+                    }
+                >
+                    <form className={t.form} onSubmit={(e) => { e.preventDefault(); changePassword(); }}>
+                        {dialogError && <p className={t.error} role="alert">{dialogError}</p>}
+                        <div>
+                            <label className={t.label} htmlFor="new-password">새 비밀번호</label>
+                            <input
+                                id="new-password"
+                                className={t.input}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="새 비밀번호"
+                            />
+                            <p className={t.hint}>학생에게 바뀐 비밀번호를 알려 주세요.</p>
+                        </div>
+                        <button type="submit" hidden />
+                    </form>
+                </Dialog>
+            )}
+
+            {confirmDialog}
+            {toastElement}
+        </TeacherShell>
     );
 }

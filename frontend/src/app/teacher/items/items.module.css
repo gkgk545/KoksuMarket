@@ -1,0 +1,60 @@
+.thumb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 4px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px rgba(28, 33, 48, .12);
+  font: 400 18px/1 var(--display);
+  color: var(--ink-2);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itemCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.itemLink {
+  display: block;
+  font-size: 13px;
+  color: var(--done);
+  text-underline-offset: 3px;
+}
+
+.stockCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowActions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.preview {
+  margin-top: 8px;
+  width: 96px;
+  height: 72px;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(28, 33, 48, .12);
+  background: var(--paper-2);
+}
+

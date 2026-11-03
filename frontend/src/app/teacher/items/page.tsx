@@ -2,37 +2,32 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase, Item } from "@/lib/supabase";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
-import { ArrowLeft, Plus, Edit2, Trash2, Save, X, Loader2, Upload, Download } from "lucide-react";
-import { motion } from "framer-motion";
+import { Download, FileDown, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { TeacherShell } from "@/components/TeacherShell";
+import { Dialog } from "@/components/Dialog";
+import { useConfirm, useToast } from "@/components/feedback";
+import { cn } from "@/lib/utils";
+import t from "../teacher.module.css";
+import styles from "./items.module.css";
+
+type ItemForm = { id?: number; name: string; cost: number; quantity: number; link: string; image_url: string };
+
+const EMPTY_FORM: ItemForm = { name: "", cost: 1, quantity: 10, link: "", image_url: "" };
 
 export default function ItemsPage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<Item[]>([]);
-    const [editingItem, setEditingItem] = useState<Item | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [newItem, setNewItem] = useState({
-        name: "",
-        cost: 1,
-        quantity: 10,
-        link: "",
-        image_url: "",
-    });
-
-    useEffect(() => {
-        if (!isAuthenticated()) {
-            router.push("/teacher");
-            return;
-        }
-        loadItems();
-    }, [router]);
+    const [form, setForm] = useState<ItemForm | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [confirm, confirmDialog] = useConfirm();
+    const [toast, toastElement] = useToast();
 
     const loadItems = async () => {
-        setLoading(true);
         const { data, error } = await supabase
             .from("market_item")
             .select("*")
@@ -40,65 +35,87 @@ export default function ItemsPage() {
 
         if (error) {
             console.error("Failed to load items:", error);
+            toast("상품을 불러오지 못했어요. 새로고침해 주세요.", "error");
         } else {
             setItems(data || []);
         }
         setLoading(false);
     };
 
-    const addItem = async () => {
-        if (!newItem.name.trim()) {
-            alert("상품명을 입력해주세요.");
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            router.push("/teacher");
+            return;
+        }
+        loadItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router]);
+
+    const openAdd = () => {
+        setFormError(null);
+        setForm({ ...EMPTY_FORM });
+    };
+
+    const openEdit = (item: Item) => {
+        setFormError(null);
+        setForm({
+            id: item.id,
+            name: item.name,
+            cost: item.cost,
+            quantity: item.quantity,
+            link: item.link ?? "",
+            image_url: item.image_url ?? "",
+        });
+    };
+
+    const saveItem = async () => {
+        if (!form) return;
+        if (!form.name.trim()) {
+            setFormError("상품 이름을 적어 주세요.");
+            return;
+        }
+        if (form.cost < 1 || form.quantity < 0) {
+            setFormError("가격은 1장 이상, 재고는 0개 이상이어야 해요.");
             return;
         }
 
-        const { error } = await supabase.from("market_item").insert({
-            name: newItem.name.trim(),
-            cost: newItem.cost,
-            quantity: newItem.quantity,
-            link: newItem.link || null,
-            image_url: newItem.image_url || null,
+        setSaving(true);
+        const payload = {
+            name: form.name.trim(),
+            cost: form.cost,
+            quantity: form.quantity,
+            link: form.link.trim() || null,
+            image_url: form.image_url.trim() || null,
+        };
+        const { error } = form.id
+            ? await supabase.from("market_item").update(payload).eq("id", form.id)
+            : await supabase.from("market_item").insert(payload);
+        setSaving(false);
+
+        if (error) {
+            setFormError(`저장하지 못했어요: ${error.message}`);
+            return;
+        }
+        toast(form.id ? `‘${payload.name}’을(를) 고쳤어요.` : `‘${payload.name}’을(를) 진열했어요.`);
+        setForm(null);
+        loadItems();
+    };
+
+    const deleteItem = async (item: Item) => {
+        const ok = await confirm({
+            title: `‘${item.name}’을(를) 지울까요?`,
+            message: "학생 상품 목록에서 바로 사라져요. 지운 상품은 되살릴 수 없어요.",
+            confirmLabel: "지우기",
+            danger: true,
         });
+        if (!ok) return;
+
+        const { error } = await supabase.from("market_item").delete().eq("id", item.id);
 
         if (error) {
-            alert("상품 추가 실패: " + error.message);
+            toast(`지우지 못했어요: ${error.message}`, "error");
         } else {
-            setShowAddModal(false);
-            setNewItem({ name: "", cost: 1, quantity: 10, link: "", image_url: "" });
-            loadItems();
-        }
-    };
-
-    const updateItem = async () => {
-        if (!editingItem) return;
-
-        const { error } = await supabase
-            .from("market_item")
-            .update({
-                name: editingItem.name,
-                cost: editingItem.cost,
-                quantity: editingItem.quantity,
-                link: editingItem.link,
-                image_url: editingItem.image_url,
-            })
-            .eq("id", editingItem.id);
-
-        if (error) {
-            alert("상품 수정 실패: " + error.message);
-        } else {
-            setEditingItem(null);
-            loadItems();
-        }
-    };
-
-    const deleteItem = async (itemId: number, itemName: string) => {
-        if (!confirm(`정말 "${itemName}" 상품을 삭제하시겠습니까?`)) return;
-
-        const { error } = await supabase.from("market_item").delete().eq("id", itemId);
-
-        if (error) {
-            alert("삭제 실패: " + error.message);
-        } else {
+            toast(`‘${item.name}’을(를) 지웠어요.`);
             loadItems();
         }
     };
@@ -120,21 +137,21 @@ export default function ItemsPage() {
             image_url: row[3]?.trim() || null,
         }));
 
+        if (fileInputRef.current) fileInputRef.current.value = "";
+
         if (itemsToAdd.length === 0) {
-            alert("추가할 상품이 없습니다. CSV 형식을 확인해주세요.\n형식: 상품명,가격,재고,이미지URL");
+            toast("추가할 상품이 없어요. 양식(상품명,가격,재고,이미지URL)을 확인해 주세요.", "error");
             return;
         }
 
         const { error } = await supabase.from("market_item").insert(itemsToAdd);
 
         if (error) {
-            alert("업로드 실패: " + error.message);
+            toast(`올리지 못했어요: ${error.message}`, "error");
         } else {
-            alert(`${itemsToAdd.length}개의 상품이 추가되었습니다.`);
+            toast(`상품 ${itemsToAdd.length}가지를 추가했어요.`);
             loadItems();
         }
-
-        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     // CSV Export
@@ -156,229 +173,192 @@ export default function ItemsPage() {
         downloadCSV("상품_업로드_양식.csv", csv);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-        );
-    }
+    const soldOut = items.filter((i) => i.quantity <= 0).length;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Hidden file input */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                accept=".csv"
-                onChange={handleCSVUpload}
-                className="hidden"
-            />
+        <TeacherShell>
+            <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCSVUpload} hidden />
 
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/teacher/dashboard"
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </Link>
-                            <h1 className="text-2xl font-bold text-indigo-600">상품 관리</h1>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
-                            >
-                                <Upload className="w-4 h-4" />
-                                <span>CSV 업로드</span>
-                            </button>
-                            <button
-                                onClick={handleDownloadTemplate}
-                                className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>양식 다운로드</span>
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                disabled={items.length === 0}
-                                className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>내보내기</span>
-                            </button>
-                            <button
-                                onClick={() => setShowAddModal(true)}
-                                className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>상품 추가</span>
-                            </button>
-                        </div>
-                    </div>
+            <div className={t.pageHead}>
+                <h1>상품 관리</h1>
+                {!loading && <p>{items.length}가지 진열 중{soldOut > 0 && ` · 품절 ${soldOut}가지`}</p>}
+                <div className={t.actions}>
+                    <button type="button" className={cn(t.btn, t.quiet)} onClick={handleDownloadTemplate}>
+                        <FileDown aria-hidden="true" />
+                        CSV 양식
+                    </button>
+                    <button type="button" className={cn(t.btn, t.ghost)} onClick={() => fileInputRef.current?.click()}>
+                        <Upload aria-hidden="true" />
+                        CSV로 추가
+                    </button>
+                    <button type="button" className={cn(t.btn, t.ghost)} onClick={handleExport} disabled={items.length === 0}>
+                        <Download aria-hidden="true" />
+                        내보내기
+                    </button>
+                    <button type="button" className={t.btn} onClick={openAdd}>
+                        <Plus aria-hidden="true" />
+                        상품 추가
+                    </button>
                 </div>
-            </header>
+            </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {items.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                        등록된 상품이 없습니다.
+            <div className={t.panel}>
+                {loading ? (
+                    <p className={t.loadingPage}>상품을 불러오는 중…</p>
+                ) : items.length === 0 ? (
+                    <div className={t.empty}>
+                        <b>아직 진열한 상품이 없어요</b>
+                        <p>‘상품 추가’로 하나씩 넣거나, CSV 양식으로 한 번에 올릴 수 있어요.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {items.map((item, index) => (
-                            <motion.div
-                                key={item.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="bg-white rounded-xl shadow-sm p-4 border"
-                            >
-                                {item.image_url && (
-                                    <img
-                                        src={item.image_url}
-                                        alt={item.name}
-                                        className="w-full h-32 object-cover rounded-lg mb-4"
-                                    />
-                                )}
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <h3 className="font-bold text-lg">{item.name}</h3>
-                                        <p className="text-purple-600 font-semibold">{item.cost}장</p>
-                                        <p className={`text-sm ${item.quantity > 0 ? "text-gray-500" : "text-red-500 font-bold"}`}>
-                                            재고: {item.quantity}개 {item.quantity === 0 && "(품절)"}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setEditingItem(item)}
-                                            className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                                        >
-                                            <Edit2 className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => deleteItem(item.id, item.name)}
-                                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                    <div className={t.scroll}>
+                        <table className={t.table}>
+                            <thead>
+                                <tr>
+                                    <th scope="col">상품</th>
+                                    <th scope="col" className={t.num}>가격</th>
+                                    <th scope="col">재고</th>
+                                    <th scope="col" className={t.end}><span className="sr-only">작업</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {items.map((item) => (
+                                    <tr key={item.id}>
+                                        <td>
+                                            <div className={styles.itemCell}>
+                                                <span className={styles.thumb} aria-hidden="true">
+                                                    {item.image_url
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        ? <img src={item.image_url} alt="" />
+                                                        : item.name.trim().charAt(0)}
+                                                </span>
+                                                <span>
+                                                    <span className={styles.itemName}>{item.name}</span>
+                                                    {item.link && (
+                                                        <a className={styles.itemLink} href={item.link} target="_blank" rel="noopener noreferrer">
+                                                            자세히 보기 링크
+                                                        </a>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className={t.num}><span className={t.price}>{item.cost}<small>장</small></span></td>
+                                        <td>
+                                            <span className={styles.stockCell}>
+                                                <span><b className={t.strong}>{item.quantity}</b><span className={t.u}>개</span></span>
+                                                {item.quantity <= 0 ? (
+                                                    <span className={cn(t.tag, t.tagOut)}>품절</span>
+                                                ) : item.quantity <= 3 ? (
+                                                    <span className={cn(t.tag, t.tagWarn)}>품절 임박</span>
+                                                ) : null}
+                                            </span>
+                                        </td>
+                                        <td className={t.end}>
+                                            <span className={styles.rowActions}>
+                                                <button type="button" className={cn(t.btn, t.quiet, t.sm)} onClick={() => openEdit(item)}>
+                                                    <Pencil aria-hidden="true" />
+                                                    고치기
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={cn(t.btn, t.quiet, t.sm, t.dangerText)}
+                                                    onClick={() => deleteItem(item)}
+                                                    aria-label={`${item.name} 지우기`}
+                                                >
+                                                    <Trash2 aria-hidden="true" />
+                                                </button>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
-            </main>
+            </div>
 
-            {/* Add/Edit Modal */}
-            {(showAddModal || editingItem) && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold">
-                                {editingItem ? "상품 수정" : "상품 추가"}
-                            </h2>
-                            <button
-                                onClick={() => {
-                                    setShowAddModal(false);
-                                    setEditingItem(null);
-                                }}
-                                className="p-1 hover:bg-gray-100 rounded"
-                            >
-                                <X className="w-5 h-5" />
+            {form && (
+                <Dialog
+                    title={form.id ? "상품 고치기" : "상품 추가"}
+                    onClose={() => setForm(null)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(t.btn, t.ghost)} onClick={() => setForm(null)}>취소</button>
+                            <button type="button" className={t.btn} onClick={saveItem} disabled={saving}>
+                                {saving ? "저장하는 중…" : form.id ? "고친 내용 저장" : "진열하기"}
                             </button>
+                        </>
+                    }
+                >
+                    <form className={t.form} onSubmit={(e) => { e.preventDefault(); saveItem(); }}>
+                        {formError && <p className={t.error} role="alert">{formError}</p>}
+                        <div>
+                            <label className={t.label} htmlFor="item-name">상품 이름</label>
+                            <input
+                                id="item-name"
+                                className={t.input}
+                                value={form.name}
+                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                placeholder="예: 연필 세트"
+                            />
                         </div>
-
-                        <div className="space-y-4">
+                        <div className={t.row2}>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">상품명</label>
+                                <label className={t.label} htmlFor="item-cost">가격 (티켓)</label>
                                 <input
-                                    type="text"
-                                    value={editingItem ? editingItem.name : newItem.name}
-                                    onChange={(e) =>
-                                        editingItem
-                                            ? setEditingItem({ ...editingItem, name: e.target.value })
-                                            : setNewItem({ ...newItem, name: e.target.value })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="상품 이름"
+                                    id="item-cost"
+                                    className={t.input}
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={1}
+                                    value={form.cost}
+                                    onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">가격 (티켓)</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={editingItem ? editingItem.cost : newItem.cost}
-                                        onChange={(e) =>
-                                            editingItem
-                                                ? setEditingItem({ ...editingItem, cost: Number(e.target.value) })
-                                                : setNewItem({ ...newItem, cost: Number(e.target.value) })
-                                        }
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">재고</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={editingItem ? editingItem.quantity : newItem.quantity}
-                                        onChange={(e) =>
-                                            editingItem
-                                                ? setEditingItem({ ...editingItem, quantity: Number(e.target.value) })
-                                                : setNewItem({ ...newItem, quantity: Number(e.target.value) })
-                                        }
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
-                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">이미지 URL (선택)</label>
+                                <label className={t.label} htmlFor="item-qty">재고 (개)</label>
                                 <input
-                                    type="text"
-                                    value={editingItem ? editingItem.image_url || "" : newItem.image_url}
-                                    onChange={(e) =>
-                                        editingItem
-                                            ? setEditingItem({ ...editingItem, image_url: e.target.value })
-                                            : setNewItem({ ...newItem, image_url: e.target.value })
-                                    }
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="https://example.com/image.jpg"
+                                    id="item-qty"
+                                    className={t.input}
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={form.quantity}
+                                    onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
                                 />
                             </div>
                         </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => {
-                                    setShowAddModal(false);
-                                    setEditingItem(null);
-                                }}
-                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={editingItem ? updateItem : addItem}
-                                className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
-                            >
-                                <Save className="w-4 h-4" />
-                                {editingItem ? "수정" : "추가"}
-                            </button>
+                        <div>
+                            <label className={t.label} htmlFor="item-image">사진 주소 (선택)</label>
+                            <input
+                                id="item-image"
+                                className={t.input}
+                                value={form.image_url}
+                                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                                placeholder="https://"
+                            />
+                            <p className={t.hint}>비워 두면 상품 이름의 첫 낱말이 색지 위에 크게 찍혀요.</p>
+                            {form.image_url.trim() && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img className={styles.preview} src={form.image_url.trim()} alt="사진 미리보기" />
+                            )}
                         </div>
-                    </motion.div>
-                </div>
+                        <div>
+                            <label className={t.label} htmlFor="item-link">자세히 보기 링크 (선택)</label>
+                            <input
+                                id="item-link"
+                                className={t.input}
+                                value={form.link}
+                                onChange={(e) => setForm({ ...form, link: e.target.value })}
+                                placeholder="https://"
+                            />
+                        </div>
+                        <button type="submit" hidden />
+                    </form>
+                </Dialog>
             )}
-        </div>
+            {confirmDialog}
+            {toastElement}
+        </TeacherShell>
     );
 }

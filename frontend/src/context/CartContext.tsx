@@ -1,16 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { Item } from "@/lib/api";
 
-interface CartItem extends Item {
-    quantity: number;
+export interface CartItem extends Item {
+    quantity: number; // how many are in the cart
+    stock: number; // item.quantity when it was first added
 }
 
 interface CartContextType {
     items: CartItem[];
     addItem: (item: Item) => void;
     removeItem: (itemId: number) => void;
+    removeLine: (itemId: number) => void;
     clearCart: () => void;
     totalCost: number;
     itemCount: number;
@@ -41,7 +43,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 alert('품절된 상품입니다.');
                 return prev;
             }
-            return [...prev, { ...item, quantity: 1 }];
+            return [...prev, { ...item, quantity: 1, stock: item.quantity }];
         });
     };
 
@@ -57,10 +59,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
+    const removeLine = (itemId: number) => {
+        setItems((prev) => prev.filter((i) => i.id !== itemId));
+    };
+
     const clearCart = () => setItems([]);
 
     return (
-        <CartContext.Provider value={{ items, addItem, removeItem, clearCart, totalCost, itemCount }}>
+        <CartContext.Provider value={{ items, addItem, removeItem, removeLine, clearCart, totalCost, itemCount }}>
             {children}
         </CartContext.Provider>
     );

@@ -1,89 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Student } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut, ReceiptText, ShoppingCart } from "lucide-react";
+import { Student, api } from "@/lib/api";
 import { CartProvider, useCart } from "@/context/CartContext";
-import { ShoppingCart, LogOut, Loader2, User as UserIcon } from "lucide-react";
-import { motion } from "framer-motion";
 import { CartDrawer } from "@/components/CartDrawer";
-import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import styles from "./market.module.css";
+
+const TABS = [
+    { href: "/market", label: "상품 목록" },
+    { href: "/market/funding", label: "공동 펀딩" },
+    { href: "/ranking", label: "마켓 랭킹" },
+];
 
 function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: () => void, onRefresh: () => void }) {
     const { itemCount } = useCart();
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const countRef = useRef<HTMLSpanElement>(null);
+    const prevCount = useRef(itemCount);
+
+    // Little bump on the cart count whenever something is added or removed
+    useEffect(() => {
+        const el = countRef.current;
+        if (el && prevCount.current !== itemCount) {
+            el.classList.remove(styles.bump);
+            void el.offsetWidth;
+            el.classList.add(styles.bump);
+        }
+        prevCount.current = itemCount;
+    }, [itemCount]);
 
     return (
         <>
-            <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b dark:border-slate-800 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/" className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-80 transition-opacity">
-                        곡수마켓
-                    </Link>
-                    <nav className="hidden md:flex gap-6 text-sm font-bold text-gray-600 dark:text-gray-300 ml-8">
-                        <Link href="/market" className="hover:text-purple-600 transition-colors">상품 목록</Link>
-                        <Link href="/market/funding" className="hover:text-pink-600 transition-colors flex items-center gap-1">
-                            공동 펀딩
-                        </Link>
-                        <Link href="/ranking" className="hover:text-amber-500 transition-colors flex items-center gap-1">
-                            🏆 마켓 랭킹
-                        </Link>
-                    </nav>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-full mr-2">
-                        <UserIcon className="w-4 h-4 text-gray-500" />
-                        <span className="font-semibold text-sm">{user.grade}학년 {user.name}</span>
-                        <div className="w-px h-4 bg-gray-300 mx-2" />
-                        <span className="font-bold text-purple-600">{user.ticket_count} Tickets</span>
+            <header className={styles.top}>
+                <div className={cn(styles.wrap, styles.topIn)}>
+                    <Link href="/market" className={styles.logo}>곡수마켓</Link>
+                    <p className={styles.me}><span>{user.grade}학년</span>{user.name}</p>
+                    <div className={styles.purse} aria-label={`보유 티켓 ${user.ticket_count}장`}>
+                        <small>보유 티켓</small>
+                        <b>{user.ticket_count}</b>
+                        <span>장</span>
                     </div>
-
-                    <div className="md:hidden font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full text-sm mr-2">
-                        {user.ticket_count} T
+                    <div className={styles.acts}>
+                        <Link href="/market/history" className={styles.hbtn} aria-label="구매 기록">
+                            <ReceiptText className={styles.icon} aria-hidden="true" />
+                            <span className={styles.label}>구매 기록</span>
+                        </Link>
+                        <button
+                            type="button"
+                            className={cn(styles.hbtn, styles.cartBtn)}
+                            onClick={() => setIsCartOpen(true)}
+                            aria-label={`장바구니 열기, ${itemCount}개 담김`}
+                        >
+                            <ShoppingCart className={styles.icon} aria-hidden="true" />
+                            <span className={styles.label}>장바구니</span>
+                            <span ref={countRef} className={cn(styles.count, itemCount === 0 && styles.countZero)}>{itemCount}</span>
+                        </button>
+                        <button type="button" className={styles.hbtn} onClick={onLogout} aria-label="로그아웃">
+                            <LogOut className={styles.icon} aria-hidden="true" />
+                            <span className={styles.label}>로그아웃</span>
+                        </button>
                     </div>
-
-                    <Link
-                        href="/market/history"
-                        className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 rounded-full transition-colors relative group"
-                        title="구매 기록"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700 dark:text-gray-300">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                        <span className="absolute hidden group-hover:block top-full mt-2 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                            구매 기록
-                        </span>
-                    </Link>
-
-                    <button
-                        onClick={() => setIsCartOpen(true)}
-                        className="relative p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 rounded-full transition-colors"
-                        title="장바구니"
-                    >
-                        <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                        {itemCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-bounce">
-                                {itemCount}
-                            </span>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={onLogout}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Logout"
-                    >
-                        <LogOut className="w-5 h-5" />
-                    </button>
                 </div>
             </header>
-
             <CartDrawer
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
@@ -91,6 +73,19 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                 onPurchaseComplete={onRefresh}
             />
         </>
+    );
+}
+
+function MarketTabs() {
+    const pathname = usePathname().replace(/\/$/, "") || "/";
+    return (
+        <nav className={styles.tabs} aria-label="마켓 메뉴">
+            {TABS.map((tab) => (
+                <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href ? "page" : undefined}>
+                    {tab.label}
+                </Link>
+            ))}
+        </nav>
     );
 }
 
@@ -124,108 +119,24 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
         }
     }, [router]);
 
-    // Canvas Confetti Effect
-    useEffect(() => {
-        const handleConfetti = () => {
-            const canvas = document.getElementById("confetti-canvas") as HTMLCanvasElement;
-            if (!canvas) return;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return;
-
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            const particles: any[] = [];
-            const colors = ["#a855f7", "#ec4899", "#3b82f6", "#eab308", "#10b981", "#ff4500", "#ff69b4"];
-
-            for (let i = 0; i < 150; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * -canvas.height - 20,
-                    size: Math.random() * 8 + 6,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: Math.random() * 6 - 3,
-                    speedY: Math.random() * 5 + 4,
-                    rotation: Math.random() * 360,
-                    rotationSpeed: Math.random() * 4 - 2
-                });
-            }
-
-            let animationFrameId: number;
-            const startTime = Date.now();
-
-            const draw = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                let hasParticlesLeft = false;
-                particles.forEach((p) => {
-                    p.x += p.speedX;
-                    p.y += p.speedY;
-                    p.rotation += p.rotationSpeed;
-
-                    if (p.y < canvas.height) {
-                        hasParticlesLeft = true;
-                    }
-
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate((p.rotation * Math.PI) / 180);
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-                    ctx.restore();
-                });
-
-                if (hasParticlesLeft && Date.now() - startTime < 4000) {
-                    animationFrameId = requestAnimationFrame(draw);
-                } else {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }
-            };
-
-            draw();
-
-            const handleResize = () => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            };
-            window.addEventListener("resize", handleResize);
-
-            return () => {
-                cancelAnimationFrame(animationFrameId);
-                window.removeEventListener("resize", handleResize);
-            };
-        };
-
-        window.addEventListener("confetti_celebrate", handleConfetti);
-        return () => {
-            window.removeEventListener("confetti_celebrate", handleConfetti);
-        };
-    }, []);
-
     const handleLogout = () => {
         localStorage.removeItem("user");
         router.push("/");
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
-            </div>
-        );
+        return <div className={styles.loadingPage}>가게 문을 여는 중…</div>;
     }
 
     if (!user) return null;
 
     return (
         <CartProvider>
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100">
-                <canvas id="confetti-canvas" className="fixed inset-0 pointer-events-none z-[100] w-full h-full" />
-                <MarketHeader user={user} onLogout={handleLogout} onRefresh={refreshUser} />
-                <main className="container mx-auto p-4 md:p-8 animate-fade-in-up">
-                    {children}
-                </main>
-            </div>
+            <MarketHeader user={user} onLogout={handleLogout} onRefresh={refreshUser} />
+            <main className={styles.wrap}>
+                <MarketTabs />
+                <div className={styles.content}>{children}</div>
+            </main>
         </CartProvider>
     );
 }

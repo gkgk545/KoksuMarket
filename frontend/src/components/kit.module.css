@@ -1,0 +1,250 @@
+/* Shared pieces used by both the student and teacher sides: dialog, toast, funding strip. */
+
+/* Dialog: a sheet of receipt paper over a dimmed counter */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(28, 33, 48, .42);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: fade .18s;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+
+.dialog {
+  width: min(var(--dialog-w, 440px), 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(28, 33, 48, .16), 0 18px 40px rgba(28, 33, 48, .22);
+  animation: rise .24s var(--ease);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+.dHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 16px 14px 24px;
+  border-bottom: 2px dashed var(--rule);
+}
+
+.dHead h2 {
+  margin: 0;
+  font: 800 20px/1.3 var(--ui);
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+
+.dHead p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.x {
+  margin-left: auto;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin-top: -6px;
+  border-radius: var(--r);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.x:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.dBody {
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.dFoot {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 14px 24px 20px;
+  border-top: 1.5px solid var(--rule-2);
+}
+
+.dFoot > * {
+  min-width: 96px;
+}
+
+/* Buttons used inside dialogs and toasts (pages bring their own sizes) */
+.btn {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--paper);
+  font: 800 15px/1 var(--ui);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #000;
+}
+
+.btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.ghost {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--rule);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.danger {
+  background: var(--stamp);
+}
+
+.danger:hover:not(:disabled) {
+  background: #A12A22;
+}
+
+.message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 70;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 8px 24px rgba(28, 33, 48, .25);
+  animation: toastIn .22s var(--ease);
+}
+
+.toastError {
+  background: var(--stamp);
+}
+
+.toast svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+}
+
+/* Funding strip: a row of ticket cells that fill up */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cells {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: 3px;
+  min-width: 0;
+}
+
+.cells i {
+  height: 22px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .65);
+  box-shadow: inset 0 0 0 1px rgba(28, 33, 48, .18);
+  position: relative;
+  overflow: hidden;
+}
+
+.onPaper .cells i {
+  background: var(--paper-2);
+}
+
+.cells i.full {
+  background: var(--ticket);
+  box-shadow: inset 0 0 0 1px rgba(42, 33, 0, .35);
+}
+
+.cells i.part::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  background: var(--ticket);
+}
+
+.done .cells i.full,
+.done .cells i.part::before {
+  background: var(--done);
+  box-shadow: none;
+}
+
+.stripCount {
+  font: 400 22px/1 var(--display);
+  white-space: nowrap;
+}
+
+.stripCount small {
+  font: 700 14px/1 var(--ui);
+  color: var(--ink-2);
+  margin-left: 2px;
+}
+
+.compact .cells i {
+  height: 14px;
+}
+
+.compact .stripCount {
+  font-size: 18px;
+}
+
+@media (max-width: 640px) {
+  .cells { grid-template-columns: repeat(10, 1fr); }
+  .dHead { padding: 18px 12px 12px 18px; }
+  .dBody { padding: 18px; }
+  .dFoot { padding: 12px 18px 18px; }
+  .dFoot > * { flex: 1; }
+}

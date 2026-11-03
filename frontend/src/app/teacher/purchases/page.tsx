@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { isAuthenticated, generateCSV, downloadCSV } from "@/lib/teacherAuth";
-import { ArrowLeft, Check, Loader2, Package, Download, Trash2, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Download, Trash2, Undo2, X } from "lucide-react";
+import { TeacherShell } from "@/components/TeacherShell";
+import { useConfirm, useToast } from "@/components/feedback";
+import { cn } from "@/lib/utils";
+import t from "../teacher.module.css";
 
 interface PurchaseWithDetails {
     id: number;
@@ -14,26 +16,31 @@ interface PurchaseWithDetails {
     is_delivered: boolean;
     student_id: number;
     item_id: number;
-    student: { name: string; grade: number };
-    item: { name: string; cost: number };
+    student: { name: string; grade: number } | null;
+    item: { name: string; cost: number } | null;
+}
+
+type Status = "all" | "pending" | "delivered";
+
+const GRADES = [3, 4, 5, 6];
+
+function stamp(iso: string) {
+    const d = new Date(iso);
+    const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
 }
 
 export default function PurchasesPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [purchases, setPurchases] = useState<PurchaseWithDetails[]>([]);
-    const [filter, setFilter] = useState<"all" | "pending" | "delivered">("pending");
-
-    useEffect(() => {
-        if (!isAuthenticated()) {
-            router.push("/teacher");
-            return;
-        }
-        loadPurchases();
-    }, [router]);
+    const [status, setStatus] = useState<Status>("pending");
+    const [grade, setGrade] = useState(0);
+    const [busyId, setBusyId] = useState<number | null>(null);
+    const [confirm, confirmDialog] = useConfirm();
+    const [toast, toastElement] = useToast();
 
     const loadPurchases = async () => {
-        setLoading(true);
         const { data, error } = await supabase
             .from("market_purchase")
             .select(`
@@ -49,8 +56,14 @@ export default function PurchasesPage() {
 
         if (error) {
             console.error("Failed to load purchases:", error);
+            toast("구매 내역을 불러오지 못했어요. 새로고침해 주세요.", "error");
         } else {
-            const transformed = (data || []).map((p: any) => ({
+            // Supabase types the joined rows loosely; each join is a single row here
+            const rows = (data || []) as unknown as (Omit<PurchaseWithDetails, "student" | "item"> & {
+                market_student: PurchaseWithDetails["student"];
+                market_item: PurchaseWithDetails["item"];
+            })[];
+            setPurchases(rows.map((p) => ({
                 id: p.id,
                 timestamp: p.timestamp,
                 is_delivered: p.is_delivered,
@@ -58,69 +71,85 @@ export default function PurchasesPage() {
                 item_id: p.item_id,
                 student: p.market_student,
                 item: p.market_item,
-            }));
-            setPurchases(transformed);
+            })));
         }
         setLoading(false);
     };
 
-    const toggleDelivered = async (purchaseId: number, currentStatus: boolean) => {
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            router.push("/teacher");
+            return;
+        }
+        loadPurchases();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router]);
+
+    const toggleDelivered = async (purchase: PurchaseWithDetails) => {
+        setBusyId(purchase.id);
         const { error } = await supabase
             .from("market_purchase")
-            .update({ is_delivered: !currentStatus })
-            .eq("id", purchaseId);
+            .update({ is_delivered: !purchase.is_delivered })
+            .eq("id", purchase.id);
+        setBusyId(null);
 
         if (error) {
-            alert("상태 변경 실패: " + error.message);
+            toast(`전달 상태를 바꾸지 못했어요: ${error.message}`, "error");
         } else {
-            loadPurchases();
+            setPurchases((prev) => prev.map((p) => (p.id === purchase.id ? { ...p, is_delivered: !p.is_delivered } : p)));
         }
     };
 
     // 구매 취소 (전달 대기 상태인 경우만) - 티켓과 수량 복구
     const cancelPurchase = async (purchase: PurchaseWithDetails) => {
-        if (!confirm(`정말 ${purchase.student?.name}의 "${purchase.item?.name}" 구매를 취소하시겠습니까?\n학생 티켓과 상품 수량이 복구됩니다.`)) return;
+        const ok = await confirm({
+            title: "구매를 취소할까요?",
+            message: `${purchase.student?.name}의 ‘${purchase.item?.name}’ 구매를 취소해요.\n학생에게 티켓 ${purchase.item?.cost ?? 0}장이 돌아가고, 상품 재고도 1개 늘어나요.`,
+            confirmLabel: "구매 취소",
+            danger: true,
+        });
+        if (!ok) return;
 
-        try {
-            const { error } = await supabase.rpc("cancel_purchase_rpc", {
-                p_purchase_id: purchase.id
-            });
-
-            if (error) throw error;
-
-            alert("구매가 취소되었습니다. 티켓과 수량이 복구되었습니다.");
-            loadPurchases();
-        } catch (error) {
-            alert("취소 실패: " + (error as Error).message);
+        const { error } = await supabase.rpc("cancel_purchase_rpc", { p_purchase_id: purchase.id });
+        if (error) {
+            toast(`취소하지 못했어요: ${error.message}`, "error");
+            return;
         }
+        toast("구매를 취소했어요. 티켓과 재고가 돌아갔어요.");
+        loadPurchases();
     };
 
     // 전달 완료 내역 삭제 (데이터베이스 정리용)
     const deletePurchase = async (purchase: PurchaseWithDetails) => {
-        if (!confirm(`정말 ${purchase.student?.name}의 "${purchase.item?.name}" 구매 기록을 삭제하시겠습니까?\n(이미 전달 완료된 내역이므로 티켓/수량은 복구되지 않습니다.)`)) return;
+        const ok = await confirm({
+            title: "구매 기록을 지울까요?",
+            message: `${purchase.student?.name}의 ‘${purchase.item?.name}’ 기록을 지워요.\n이미 전달한 물건이라 티켓과 재고는 돌아가지 않아요.`,
+            confirmLabel: "기록 지우기",
+            danger: true,
+        });
+        if (!ok) return;
 
-        const { error } = await supabase
-            .from("market_purchase")
-            .delete()
-            .eq("id", purchase.id);
-
+        const { error } = await supabase.from("market_purchase").delete().eq("id", purchase.id);
         if (error) {
-            alert("삭제 실패: " + error.message);
-        } else {
-            loadPurchases();
+            toast(`지우지 못했어요: ${error.message}`, "error");
+            return;
         }
+        toast("구매 기록을 지웠어요.");
+        setPurchases((prev) => prev.filter((p) => p.id !== purchase.id));
     };
 
-    const filteredPurchases = purchases.filter((p) => {
-        if (filter === "pending") return !p.is_delivered;
-        if (filter === "delivered") return p.is_delivered;
-        return true;
-    });
+    const byGrade = purchases.filter((p) => !grade || p.student?.grade === grade);
+    const counts = {
+        all: byGrade.length,
+        pending: byGrade.filter((p) => !p.is_delivered).length,
+        delivered: byGrade.filter((p) => p.is_delivered).length,
+    };
+    const shown = byGrade.filter((p) => (status === "pending" ? !p.is_delivered : status === "delivered" ? p.is_delivered : true));
 
     // CSV Export
     const handleExport = () => {
         const headers = ["학생이름", "학년", "상품명", "가격", "구매일시", "전달상태"];
-        const rows = filteredPurchases.map(p => [
+        const rows = shown.map(p => [
             p.student?.name || "",
             p.student?.grade?.toString() || "",
             p.item?.name || "",
@@ -129,156 +158,132 @@ export default function PurchasesPage() {
             p.is_delivered ? "완료" : "대기",
         ]);
         const csv = generateCSV(headers, rows);
-        const filterName = filter === "all" ? "전체" : filter === "pending" ? "전달대기" : "전달완료";
+        const filterName = status === "all" ? "전체" : status === "pending" ? "전달대기" : "전달완료";
         downloadCSV(`구매내역_${filterName}.csv`, csv);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-        );
-    }
+    const statuses: { key: Status; label: string }[] = [
+        { key: "pending", label: "전달 대기" },
+        { key: "delivered", label: "전달 완료" },
+        { key: "all", label: "전체" },
+    ];
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/teacher/dashboard"
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <h1 className="text-2xl font-bold text-indigo-600">구매 내역 관리</h1>
-                    </div>
-                    <button
-                        onClick={handleExport}
-                        disabled={filteredPurchases.length === 0}
-                        className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
-                    >
-                        <Download className="w-4 h-4" />
-                        <span>내보내기</span>
+        <TeacherShell pendingCount={purchases.filter((p) => !p.is_delivered).length}>
+            <div className={t.pageHead}>
+                <h1>구매 내역</h1>
+                <div className={t.actions}>
+                    <button type="button" className={cn(t.btn, t.ghost)} onClick={handleExport} disabled={shown.length === 0}>
+                        <Download aria-hidden="true" />
+                        보이는 목록 내보내기
                     </button>
                 </div>
-            </header>
+            </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Filter Tabs - 전체가 가장 왼쪽 */}
-                <div className="flex gap-2 mb-6">
-                    {[
-                        { key: "all", label: "전체", color: "gray" },
-                        { key: "pending", label: "전달 대기", color: "orange" },
-                        { key: "delivered", label: "전달 완료", color: "green" },
-                    ].map((tab) => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setFilter(tab.key as any)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === tab.key
-                                ? tab.key === "pending"
-                                    ? "bg-orange-500 text-white"
-                                    : tab.key === "delivered"
-                                        ? "bg-green-500 text-white"
-                                        : "bg-gray-600 text-white"
-                                : "bg-white text-gray-600 hover:bg-gray-100"
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+            <div className={t.panel}>
+                <div className={t.pHead}>
+                    <div className={t.seg} role="group" aria-label="전달 상태">
+                        {statuses.map((s) => (
+                            <button key={s.key} type="button" aria-pressed={status === s.key} onClick={() => setStatus(s.key)}>
+                                {s.label}<span className={t.segCount}>{counts[s.key]}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className={cn(t.seg, t.push)} role="group" aria-label="학년">
+                        {[0, ...GRADES].map((g) => (
+                            <button key={g} type="button" aria-pressed={grade === g} onClick={() => setGrade(g)}>
+                                {g ? `${g}학년` : "전체 학년"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                {filteredPurchases.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                        <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>해당하는 구매 내역이 없습니다.</p>
+                {loading ? (
+                    <p className={t.loadingPage}>구매 내역을 불러오는 중…</p>
+                ) : shown.length === 0 ? (
+                    <div className={t.empty}>
+                        <b>{status === "pending" ? "전달할 물건이 없어요" : "해당하는 구매 내역이 없어요"}</b>
+                        <p>{status === "pending" ? "학생이 새로 사면 여기에 올라와요." : "다른 상태나 학년을 골라 보세요."}</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b">
+                    <div className={t.scroll}>
+                        <table className={t.table}>
+                            <thead>
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">학생</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">상품</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">가격</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">구매일시</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">전달 상태</th>
-                                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">작업</th>
+                                    <th scope="col">학생</th>
+                                    <th scope="col">상품</th>
+                                    <th scope="col" className={t.num}>가격</th>
+                                    <th scope="col">산 시각</th>
+                                    <th scope="col">전달</th>
+                                    <th scope="col" className={t.end}><span className="sr-only">작업</span></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
-                                {filteredPurchases.map((purchase, index) => (
-                                    <motion.tr
-                                        key={purchase.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.03 }}
-                                        className="hover:bg-gray-50"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <span className="font-medium">{purchase.student?.name}</span>
-                                            <span className="text-gray-400 text-sm ml-2">
-                                                ({purchase.student?.grade}학년)
-                                            </span>
+                            <tbody>
+                                {shown.map((p) => (
+                                    <tr key={p.id}>
+                                        <td>
+                                            <span className={t.strong}>{p.student?.name ?? "알 수 없음"}</span>{" "}
+                                            <span className={t.muted}>{p.student?.grade}학년</span>
                                         </td>
-                                        <td className="px-6 py-4">{purchase.item?.name}</td>
-                                        <td className="px-6 py-4 text-center text-purple-600 font-semibold">
-                                            {purchase.item?.cost}장
-                                        </td>
-                                        <td className="px-6 py-4 text-center text-gray-500 text-sm">
-                                            {new Date(purchase.timestamp).toLocaleString("ko-KR")}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => toggleDelivered(purchase.id, purchase.is_delivered)}
-                                                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${purchase.is_delivered
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                                    : "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                                                    }`}
-                                            >
-                                                {purchase.is_delivered ? (
-                                                    <>
-                                                        <Check className="w-4 h-4" />
-                                                        전달 완료
-                                                    </>
-                                                ) : (
-                                                    "전달 대기"
-                                                )}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            {purchase.is_delivered ? (
-                                                // 전달 완료: 삭제 버튼 (데이터베이스 정리용)
-                                                <button
-                                                    onClick={() => deletePurchase(purchase)}
-                                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                                    title="기록 삭제"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                    삭제
-                                                </button>
+                                        <td>{p.item?.name ?? "삭제된 상품"}</td>
+                                        <td className={t.num}><span className={t.price}>{p.item?.cost ?? 0}<small>장</small></span></td>
+                                        <td className={cn(t.muted, t.nowrap)}>{stamp(p.timestamp)}</td>
+                                        <td>
+                                            {p.is_delivered ? (
+                                                <span className={t.mark}>전달 완료</span>
                                             ) : (
-                                                // 전달 대기: 구매 취소 버튼 (티켓/수량 복구)
                                                 <button
-                                                    onClick={() => cancelPurchase(purchase)}
-                                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                                    title="구매 취소 (티켓/수량 복구)"
+                                                    type="button"
+                                                    className={cn(t.btn, t.sm)}
+                                                    onClick={() => toggleDelivered(p)}
+                                                    disabled={busyId === p.id}
                                                 >
-                                                    <X className="w-4 h-4" />
-                                                    취소
+                                                    <Check aria-hidden="true" />
+                                                    전달 완료
                                                 </button>
                                             )}
                                         </td>
-                                    </motion.tr>
+                                        <td className={t.end}>
+                                            {p.is_delivered ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className={cn(t.btn, t.quiet, t.sm)}
+                                                        onClick={() => toggleDelivered(p)}
+                                                        disabled={busyId === p.id}
+                                                    >
+                                                        <Undo2 aria-hidden="true" />
+                                                        대기로
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={cn(t.btn, t.quiet, t.sm, t.dangerText)}
+                                                        onClick={() => deletePurchase(p)}
+                                                        aria-label="기록 지우기"
+                                                    >
+                                                        <Trash2 aria-hidden="true" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className={cn(t.btn, t.quiet, t.sm, t.dangerText)}
+                                                    onClick={() => cancelPurchase(p)}
+                                                >
+                                                    <X aria-hidden="true" />
+                                                    구매 취소
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
-            </main>
-        </div>
+            </div>
+            {confirmDialog}
+            {toastElement}
+        </TeacherShell>
     );
 }

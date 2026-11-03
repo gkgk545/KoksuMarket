@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { api, Student, Purchase } from "@/lib/api";
-import { Loader2, Package, Clock, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import styles from "./history.module.css";
+
+type Filter = "all" | "waiting" | "delivered";
+
+const DAY = "일월화수목금토";
+
+function dayLabel(d: Date) {
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY[d.getDay()]})`;
+}
+
+function timeLabel(d: Date) {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 export default function HistoryPage() {
     const [user, setUser] = useState<Student | null>(null);
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<Filter>("all");
 
     useEffect(() => {
         const stored = localStorage.getItem("user");
@@ -31,70 +45,99 @@ export default function HistoryPage() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-            </div>
-        );
+        return <p className={styles.loading}>구매 기록을 찾는 중…</p>;
     }
 
     if (!user) return null;
 
+    const waiting = purchases.filter((p) => !p.is_delivered).length;
+    const spent = purchases.reduce((sum, p) => sum + (p.item_cost ?? 0), 0);
+    const shown = purchases.filter((p) =>
+        filter === "all" ? true : filter === "waiting" ? !p.is_delivered : p.is_delivered
+    );
+
+    // Group lines under the day they were bought
+    const days: { label: string; items: Purchase[] }[] = [];
+    for (const p of shown) {
+        const label = dayLabel(new Date(p.timestamp));
+        const last = days[days.length - 1];
+        if (last && last.label === label) last.items.push(p);
+        else days.push({ label, items: [p] });
+    }
+
+    const filters: { key: Filter; label: string }[] = [
+        { key: "all", label: "전체" },
+        { key: "waiting", label: `받기 전 ${waiting}` },
+        { key: "delivered", label: "받은 것" },
+    ];
+
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Package className="w-6 h-6 text-purple-600" />
-                구매 기록
-            </h1>
-
-            {purchases.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-dashed dark:border-slate-700">
-                    <p className="text-gray-500">아직 구매한 물건이 없습니다.</p>
+        <>
+            <div className={styles.head}>
+                <h1>구매 기록</h1>
+                <div className={styles.seg} role="group" aria-label="구매 기록 거르기">
+                    {filters.map((f) => (
+                        <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
-            ) : (
-                <div className="space-y-4">
-                    {purchases.map((purchase) => {
-                        const date = new Date(purchase.timestamp).toLocaleString('ko-KR', {
-                            year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                        });
+            </div>
 
-                        return (
-                            <div key={purchase.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{purchase.item_name}</h3>
-                                    <p className="text-gray-500 text-sm flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {date}
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center justify-between md:justify-end gap-6">
-                                    <div className="text-right">
-                                        <div className="font-bold text-purple-600">{purchase.item_cost} Tickets</div>
-                                    </div>
-
-                                    <div className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1.5 ${purchase.is_delivered
-                                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                            : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 animate-pulse"
-                                        }`}>
-                                        {purchase.is_delivered ? (
-                                            <>
-                                                <CheckCircle2 className="w-4 h-4" />
-                                                전달 완료
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Package className="w-4 h-4" />
-                                                준비 중
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+            <div className={styles.receipt}>
+                <div className={styles.rTop}>
+                    <b>곡수마켓</b>
+                    <span>{user.grade}학년 {user.name}의 구매 기록</span>
                 </div>
-            )}
-        </div>
+                <dl className={styles.totals}>
+                    <div><dt>산 횟수</dt><dd>{purchases.length}<small>번</small></dd></div>
+                    <div><dt>쓴 티켓</dt><dd>{spent}<small>장</small></dd></div>
+                    <div className={styles.wait}><dt>받기 전</dt><dd>{waiting}<small>개</small></dd></div>
+                </dl>
+
+                {shown.length === 0 ? (
+                    <div className={styles.empty}>
+                        {purchases.length === 0 ? (
+                            <>
+                                <b>아직 산 물건이 없어요</b>
+                                <p>상품 목록에서 마음에 드는 물건을 골라 보세요.</p>
+                            </>
+                        ) : filter === "waiting" ? (
+                            <>
+                                <b>받기를 기다리는 물건이 없어요</b>
+                                <p>산 물건은 모두 선생님께 받았어요.</p>
+                            </>
+                        ) : (
+                            <>
+                                <b>아직 받은 물건이 없어요</b>
+                                <p>선생님이 물건을 건네주면 여기에 표시돼요.</p>
+                            </>
+                        )}
+                    </div>
+                ) : (
+                    days.map((day) => (
+                        <section key={day.label}>
+                            <h2 className={styles.day}>{day.label}</h2>
+                            <ul className={styles.lines}>
+                                {day.items.map((p) => (
+                                    <li key={p.id} className={styles.line}>
+                                        <div>
+                                            <div className={styles.name}>{p.item_name}</div>
+                                            <div className={styles.time}>{timeLabel(new Date(p.timestamp))}</div>
+                                        </div>
+                                        <div className={styles.cost}>{p.item_cost}<small>장</small></div>
+                                        <div className={styles.status}>
+                                            <span className={cn(p.is_delivered ? styles.delivered : styles.waiting)}>
+                                                {p.is_delivered ? "전달 완료" : "선생님께 받기 전"}
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ))
+                )}
+            </div>
+        </>
     );
 }

@@ -1,12 +1,38 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, Item, Student } from "@/lib/api";
+import { api, Funding, Item, Student } from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
-import { Loader2 } from "lucide-react";
+import { FundingStrip } from "@/components/FundingStrip";
+import styles from "./market.module.css";
+
+function FundingTeaser({ funding, now }: { funding: Funding; now: number }) {
+    const deadline = funding.deadline ? new Date(funding.deadline) : null;
+    const daysLeft = deadline ? Math.ceil((deadline.getTime() - now) / 86_400_000) : null;
+
+    return (
+        <section className={styles.fund} aria-labelledby="fund-title">
+            <div>
+                <h2 id="fund-title"><span>공동 펀딩</span>{funding.title}</h2>
+                <p>
+                    {deadline
+                        ? `${deadline.getMonth() + 1}월 ${deadline.getDate()}일까지${daysLeft !== null && daysLeft >= 0 ? ` · ${daysLeft}일 남음` : ""}`
+                        : "다 모이면 함께 사요"}
+                    {funding.current_amount < funding.target_amount && ` · ${funding.target_amount - funding.current_amount}장 더 모으면 완성`}
+                </p>
+            </div>
+            <Link className={`${styles.btn} ${styles.ghost}`} href="/market/funding">펀딩 보러 가기</Link>
+            <div className={styles.strip}>
+                <FundingStrip current={funding.current_amount} target={funding.target_amount} />
+            </div>
+        </section>
+    );
+}
 
 export default function MarketPage() {
     const [items, setItems] = useState<Item[]>([]);
+    const [funding, setFunding] = useState<{ data: Funding; loadedAt: number } | null>(null);
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -24,6 +50,12 @@ export default function MarketPage() {
 
         loadUserFromStorage();
         loadItems();
+        api.getFundings()
+            .then((list) => {
+                const open = list.find((f) => !f.is_completed);
+                setFunding(open ? { data: open, loadedAt: Date.now() } : null);
+            })
+            .catch((e) => console.error("Failed to load fundings", e));
 
         window.addEventListener("purchase_complete", loadItems);
         window.addEventListener("auth_refreshed", loadUserFromStorage);
@@ -33,33 +65,34 @@ export default function MarketPage() {
         };
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-            </div>
-        );
-    }
+    const balance = user?.ticket_count ?? 0;
+    const affordable = items.filter((i) => i.quantity > 0 && balance >= i.cost).length;
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold mb-6">판매 중인 물건</h1>
+        <>
+            {funding && <FundingTeaser funding={funding.data} now={funding.loadedAt} />}
 
-            {items.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-dashed">
-                    <p className="text-gray-500">등록된 물건이 없습니다.</p>
+            <div className={styles.shelfHead}>
+                <h1>판매 중인 물건</h1>
+                {!loading && items.length > 0 && (
+                    <p>{items.length}가지 중 지금 {affordable}가지를 살 수 있어요</p>
+                )}
+            </div>
+
+            {loading ? (
+                <p className={styles.emptyShelf}>물건을 진열하는 중…</p>
+            ) : items.length === 0 ? (
+                <div className={styles.emptyShelf}>
+                    <b>아직 진열된 물건이 없어요</b>
+                    <p>선생님이 물건을 올리면 여기에 나타나요.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div className={styles.grid}>
                     {items.map((item) => (
-                        <ProductCard
-                            key={item.id}
-                            item={item}
-                            canBuy={user ? user.ticket_count >= item.cost : false}
-                        />
+                        <ProductCard key={item.id} item={item} balance={balance} />
                     ))}
                 </div>
             )}
-        </div>
+        </>
     );
 }
