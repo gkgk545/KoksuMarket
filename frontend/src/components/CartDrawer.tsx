@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { api, Student } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import styles from "@/app/market/market.module.css";
-
-interface CartDrawerProps {
-    isOpen: boolean;
-    onClose: () => void;
-    currentUser: Student | null;
-    onPurchaseComplete: () => void;
-}
 
 interface PaidReceipt {
     lines: { id: number; name: string; cost: number; quantity: number }[];
@@ -26,60 +19,24 @@ function todayLabel() {
     return `${d.getMonth() + 1}월 ${d.getDate()}일 (${day})`;
 }
 
-export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }: CartDrawerProps) {
-    const { items, addItem, removeItem, removeLine, totalCost, clearCart } = useCart();
+// Checkout state shared by the drawer (small screens) and the side panel (wide screens).
+function useCheckout(currentUser: Student | null, onPurchaseComplete: () => void) {
+    const { items, totalCost, clearCart } = useCart();
     const [loading, setLoading] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [paid, setPaid] = useState<PaidReceipt | null>(null);
-    const drawerRef = useRef<HTMLElement>(null);
-    const closeRef = useRef<HTMLButtonElement>(null);
 
     const balance = currentUser?.ticket_count ?? 0;
     const left = balance - totalCost;
 
-    const handleClose = () => {
+    const reset = () => {
         setPaid(null);
         setConfirming(false);
         setError(null);
-        onClose();
     };
 
-    // Focus, scroll lock, Escape and a simple focus trap while open
-    useEffect(() => {
-        if (!isOpen) return;
-        const lastFocus = document.activeElement as HTMLElement | null;
-        document.body.style.overflow = "hidden";
-        closeRef.current?.focus();
-
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                handleClose();
-                return;
-            }
-            if (e.key !== "Tab" || !drawerRef.current) return;
-            const focusable = drawerRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]");
-            if (!focusable.length) return;
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
-        };
-        document.addEventListener("keydown", onKey);
-        return () => {
-            document.removeEventListener("keydown", onKey);
-            document.body.style.overflow = "";
-            lastFocus?.focus();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen]);
-
-    const handleCheckout = async () => {
+    const checkout = async () => {
         if (!currentUser) return;
         if (left < 0) {
             setError(`티켓이 ${-left}장 모자라요.`);
@@ -121,9 +78,27 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
         setLoading(false);
     };
 
-    if (!isOpen) return null;
+    return { balance, left, loading, confirming, setConfirming, error, paid, reset, checkout };
+}
 
-    const head = (
+type Checkout = ReturnType<typeof useCheckout>;
+
+interface CartContentsProps {
+    checkout: Checkout;
+    currentUser: Student | null;
+    /** "drawer" is the full receipt; "panel" is the compact one that sits beside the shelf. */
+    variant: "drawer" | "panel";
+    /** Drawer: close it. Panel: clear the paid receipt. */
+    onDone: () => void;
+}
+
+// The receipt and its footer: the cart lines, the totals and the buy button.
+function CartContents({ checkout, currentUser, variant, onDone }: CartContentsProps) {
+    const { items, addItem, removeItem, removeLine, totalCost } = useCart();
+    const { balance, left, loading, confirming, setConfirming, error, paid } = checkout;
+    const isPanel = variant === "panel";
+
+    const head = isPanel ? null : (
         <div className={styles.rTop}>
             <b>곡수마켓</b>
             <span>
@@ -160,10 +135,12 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
         );
         foot = (
             <>
-                <p className={styles.dDone}>
+                <p className={styles.dDone} role="status">
                     <b>구매가 끝났어요.</b> 선생님이 물건을 건네주면 구매 기록에 ‘전달 완료’로 바뀌어요.
                 </p>
-                <button className={styles.btn} type="button" onClick={handleClose}>상품 목록으로</button>
+                <button className={styles.btn} type="button" onClick={onDone}>
+                    {isPanel ? "확인" : "상품 목록으로"}
+                </button>
             </>
         );
     } else if (items.length === 0) {
@@ -171,12 +148,12 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
             <>
                 {head}
                 <div className={styles.empty}>
-                    <b>장바구니가 비었어요</b>
+                    <b>{isPanel ? "아직 담은 물건이 없어요" : "장바구니가 비었어요"}</b>
                     <p>상품 아래쪽 ‘담기’를 누르면<br />여기에 담겨요.</p>
                 </div>
             </>
         );
-        foot = <button className={styles.btn} type="button" onClick={handleClose}>물건 고르러 가기</button>;
+        foot = isPanel ? null : <button className={styles.btn} type="button" onClick={onDone}>물건 고르러 가기</button>;
     } else {
         receipt = (
             <>
@@ -228,7 +205,7 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
                     <button className={cn(styles.btn, styles.ghost)} type="button" onClick={() => setConfirming(false)} disabled={loading}>
                         취소
                     </button>
-                    <button className={styles.btn} type="button" onClick={handleCheckout} disabled={loading}>
+                    <button className={styles.btn} type="button" onClick={checkout.checkout} disabled={loading}>
                         {loading ? "사는 중…" : "네, 살게요"}
                     </button>
                 </div>
@@ -249,6 +226,74 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
 
     return (
         <>
+            <div className={styles.dBody}>
+                <div className={styles.receipt}>{receipt}</div>
+            </div>
+            {(error || foot) && (
+                <div className={styles.dFoot}>
+                    {error && <p className={styles.dError} role="alert">{error}</p>}
+                    {foot}
+                </div>
+            )}
+        </>
+    );
+}
+
+interface CartDrawerProps {
+    isOpen: boolean;
+    onClose: () => void;
+    currentUser: Student | null;
+    onPurchaseComplete: () => void;
+}
+
+export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }: CartDrawerProps) {
+    const checkout = useCheckout(currentUser, onPurchaseComplete);
+    const drawerRef = useRef<HTMLElement>(null);
+    const closeRef = useRef<HTMLButtonElement>(null);
+
+    const handleClose = () => {
+        checkout.reset();
+        onClose();
+    };
+
+    // Focus, scroll lock, Escape and a simple focus trap while open
+    useEffect(() => {
+        if (!isOpen) return;
+        const lastFocus = document.activeElement as HTMLElement | null;
+        document.body.style.overflow = "hidden";
+        closeRef.current?.focus();
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                handleClose();
+                return;
+            }
+            if (e.key !== "Tab" || !drawerRef.current) return;
+            const focusable = drawerRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]");
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            document.body.style.overflow = "";
+            lastFocus?.focus();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    return (
+        <>
             <div className={styles.scrim} onClick={handleClose} />
             <aside ref={drawerRef} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="cart-title">
                 <div className={styles.dHead}>
@@ -257,14 +302,29 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
                         <X aria-hidden="true" />
                     </button>
                 </div>
-                <div className={styles.dBody}>
-                    <div className={styles.receipt}>{receipt}</div>
-                </div>
-                <div className={styles.dFoot}>
-                    {error && <p className={styles.dError} role="alert">{error}</p>}
-                    {foot}
-                </div>
+                <CartContents checkout={checkout} currentUser={currentUser} variant="drawer" onDone={handleClose} />
             </aside>
         </>
     );
 }
+
+interface CartPanelProps {
+    currentUser: Student | null;
+    onPurchaseComplete: () => void;
+}
+
+// Wide screens: the cart stays open beside the shelf, so what is in it is always in view.
+export const CartPanel = forwardRef<HTMLElement, CartPanelProps>(function CartPanel({ currentUser, onPurchaseComplete }, ref) {
+    const checkout = useCheckout(currentUser, onPurchaseComplete);
+    const { itemCount } = useCart();
+
+    return (
+        <aside ref={ref} className={styles.cartPanel} aria-labelledby="cart-panel-title" tabIndex={-1}>
+            <div className={styles.dHead}>
+                <h2 id="cart-panel-title">장바구니</h2>
+                {itemCount > 0 && <span className={styles.panelCount}>{itemCount}개</span>}
+            </div>
+            <CartContents checkout={checkout} currentUser={currentUser} variant="panel" onDone={checkout.reset} />
+        </aside>
+    );
+});

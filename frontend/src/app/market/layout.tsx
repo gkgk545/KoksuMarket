@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, ReceiptText, ShoppingCart } from "lucide-react";
 import { Student, api } from "@/lib/api";
 import { CartProvider, useCart } from "@/context/CartContext";
-import { CartDrawer } from "@/components/CartDrawer";
+import { CartDrawer, CartPanel } from "@/components/CartDrawer";
+import { CartBar } from "@/components/CartBar";
 import { Dialog } from "@/components/Dialog";
 import { cn } from "@/lib/utils";
 import kit from "@/components/kit.module.css";
@@ -18,9 +19,31 @@ const TABS = [
     { href: "/ranking", label: "마켓 랭킹" },
 ];
 
-function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: () => void, onRefresh: () => void }) {
+// Keep in step with the 1100px media query in market.module.css (.wide, .withPanel).
+const PANEL_QUERY = "(min-width: 1100px)";
+
+function useMediaQuery(query: string) {
+    const subscribe = useCallback((onChange: () => void) => {
+        const media = window.matchMedia(query);
+        media.addEventListener("change", onChange);
+        return () => media.removeEventListener("change", onChange);
+    }, [query]);
+    return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+}
+
+function useCurrentPath() {
+    return usePathname().replace(/\/$/, "") || "/";
+}
+
+interface MarketHeaderProps {
+    user: Student;
+    wide: boolean;
+    onLogout: () => void;
+    onOpenCart: () => void;
+}
+
+function MarketHeader({ user, wide, onLogout, onOpenCart }: MarketHeaderProps) {
     const { itemCount, totalCost } = useCart();
-    const [isCartOpen, setIsCartOpen] = useState(false);
     const [askLogout, setAskLogout] = useState(false);
 
     // Logging out with things still in the cart is the usual way a purchase gets forgotten.
@@ -45,7 +68,7 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
     return (
         <>
             <header className={styles.top}>
-                <div className={cn(styles.wrap, styles.topIn)}>
+                <div className={cn(styles.wrap, wide && styles.wide, styles.topIn)}>
                     <Link href="/market" className={styles.logo}>곡수마켓</Link>
                     <p className={styles.me}><span>{user.grade}학년</span>{user.name}</p>
                     <div className={styles.purse} aria-label={`보유 티켓 ${user.ticket_count}장`}>
@@ -61,7 +84,7 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                         <button
                             type="button"
                             className={cn(styles.hbtn, styles.cartBtn)}
-                            onClick={() => setIsCartOpen(true)}
+                            onClick={onOpenCart}
                             aria-label={`장바구니 열기, ${itemCount}개 담김`}
                         >
                             <ShoppingCart className={styles.icon} aria-hidden="true" />
@@ -75,12 +98,6 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                     </div>
                 </div>
             </header>
-            <CartDrawer
-                isOpen={isCartOpen}
-                onClose={() => setIsCartOpen(false)}
-                currentUser={user}
-                onPurchaseComplete={onRefresh}
-            />
             {askLogout && (
                 <Dialog
                     title={`장바구니에 ${itemCount}개가 남아 있어요`}
@@ -96,7 +113,7 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                                 data-autofocus
                                 onClick={() => {
                                     setAskLogout(false);
-                                    setIsCartOpen(true);
+                                    onOpenCart();
                                 }}
                             >
                                 장바구니 보기
@@ -115,7 +132,7 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
 }
 
 function MarketTabs() {
-    const pathname = usePathname().replace(/\/$/, "") || "/";
+    const pathname = useCurrentPath();
     return (
         <nav className={styles.tabs} aria-label="마켓 메뉴">
             {TABS.map((tab) => (
@@ -127,34 +144,99 @@ function MarketTabs() {
     );
 }
 
+interface MarketShellProps {
+    user: Student;
+    onLogout: () => void;
+    onRefresh: () => void;
+    children: React.ReactNode;
+}
+
+// Where the cart shows: a side panel beside the shelf on wide screens,
+// otherwise a bottom bar (while something is in it) that opens the drawer.
+function MarketShell({ user, onLogout, onRefresh, children }: MarketShellProps) {
+    const { itemCount } = useCart();
+    const isWide = useMediaQuery(PANEL_QUERY);
+    const path = useCurrentPath();
+    const showPanel = isWide && path === "/market";
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const panelRef = useRef<HTMLElement>(null);
+    const showBar = !showPanel && itemCount > 0;
+
+    const openCart = () => {
+        const panel = panelRef.current;
+        if (!showPanel || !panel) {
+            setIsCartOpen(true);
+            return;
+        }
+        // The panel is already on screen: point at it instead of opening a second cart.
+        panel.focus();
+        panel.classList.remove(styles.panelFlash);
+        void panel.offsetWidth;
+        panel.classList.add(styles.panelFlash);
+    };
+
+    return (
+        <>
+            <MarketHeader user={user} wide={showPanel} onLogout={onLogout} onOpenCart={openCart} />
+            <main className={cn(styles.wrap, showPanel && styles.wide, showPanel && styles.withPanel, showBar && styles.hasBar)}>
+                <MarketTabs />
+                <div className={styles.content}>{children}</div>
+                {showPanel && <CartPanel ref={panelRef} currentUser={user} onPurchaseComplete={onRefresh} />}
+            </main>
+            {showBar && !isCartOpen && <CartBar onOpen={openCart} />}
+            <CartDrawer
+                isOpen={isCartOpen && !showPanel}
+                onClose={() => setIsCartOpen(false)}
+                currentUser={user}
+                onPurchaseComplete={onRefresh}
+            />
+        </>
+    );
+}
+
+// Re-fetches the student saved at login so the balance is current, and syncs localStorage.
+// Returns null when no one is logged in or the check fails.
+async function fetchFreshUser(): Promise<Student | null> {
+    const stored = localStorage.getItem("user");
+    if (!stored) return null;
+    try {
+        const parsed = JSON.parse(stored) as Student;
+        const data = await api.getStudentDetail(parsed.id);
+        localStorage.setItem("user", JSON.stringify(data.student));
+        window.dispatchEvent(new Event("auth_refreshed"));
+        return data.student;
+    } catch (e) {
+        console.error("Auth verify failed", e);
+        return null;
+    }
+}
+
 export default function MarketLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const refreshUser = async () => {
-        const stored = localStorage.getItem("user");
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            // Re-fetch to get fresh balance
-            try {
-                const data = await api.getStudentDetail(parsed.id);
-                setUser(data.student);
-                localStorage.setItem("user", JSON.stringify(data.student)); // Sync local storage
-                window.dispatchEvent(new Event("auth_refreshed"));
-            } catch (e) {
-                console.error("Auth verify failed", e);
-            }
-        }
-    };
+    // After a purchase: fetch the fresh balance and show it.
+    const refreshUser = useCallback(() => {
+        fetchFreshUser().then((student) => {
+            if (student) setUser(student);
+        });
+    }, []);
 
     useEffect(() => {
-        const stored = localStorage.getItem("user");
-        if (!stored) {
+        if (!localStorage.getItem("user")) {
             router.push("/");
-        } else {
-            refreshUser().finally(() => setLoading(false));
+            return;
         }
+        let cancelled = false;
+        fetchFreshUser().then((student) => {
+            if (cancelled) return;
+            setUser(student);
+            setLoading(false);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [router]);
 
     const handleLogout = () => {
@@ -170,11 +252,9 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
 
     return (
         <CartProvider studentId={user.id} balance={user.ticket_count}>
-            <MarketHeader user={user} onLogout={handleLogout} onRefresh={refreshUser} />
-            <main className={styles.wrap}>
-                <MarketTabs />
-                <div className={styles.content}>{children}</div>
-            </main>
+            <MarketShell user={user} onLogout={handleLogout} onRefresh={refreshUser}>
+                {children}
+            </MarketShell>
         </CartProvider>
     );
 }

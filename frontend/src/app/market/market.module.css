@@ -882,7 +882,231 @@
   to { opacity: 1; transform: translate(-50%, -50%) rotate(-8deg) scale(1); }
 }
 
+/* Wide screens: the cart stays open beside the shelf (keep 1100px in step with PANEL_QUERY in layout.tsx).
+   The page widens so an 11" Chromebook (1280–1366px) still gets four columns of tickets. */
+@media (min-width: 1100px) {
+  .wide { max-width: 1480px; }
+
+  .withPanel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    column-gap: 20px;
+  }
+
+  .withPanel > .tabs,
+  .withPanel > .content {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .withPanel .grid {
+    gap: 16px;
+  }
+}
+
+.cartPanel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  position: sticky;
+  top: 94px; /* below the sticky header */
+  margin: 20px 0 24px;
+  max-height: calc(100dvh - 94px - 24px);
+  display: flex;
+  flex-direction: column;
+  background: var(--ground-2);
+  border-radius: 8px;
+  overflow: hidden;
+  outline: none;
+}
+
+.cartPanel .dHead {
+  padding: 14px 16px 4px;
+}
+
+.cartPanel .dHead h2 {
+  font-size: 18px;
+}
+
+.panelCount {
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font: 800 14px/1 var(--ui);
+  padding: 5px 10px;
+  border-radius: 12px;
+}
+
+.cartPanel .dBody {
+  min-height: 0;
+  padding: 6px 12px 14px;
+}
+
+.cartPanel .receipt {
+  padding: 8px 14px 22px;
+}
+
+.cartPanel .line {
+  padding: 8px 0;
+  gap: 4px 10px;
+}
+
+.cartPanel .lineName {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.cartPanel .lineUnit {
+  display: none;
+}
+
+.cartPanel .lineSub {
+  font-size: 18px;
+}
+
+.cartPanel .line .stepper,
+.cartPanel .line .stepper button {
+  height: 32px;
+}
+
+.cartPanel .line .stepper button {
+  width: 32px;
+}
+
+.cartPanel .sum {
+  padding-top: 10px;
+}
+
+.cartPanel .sum div {
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.cartPanel .total {
+  font-size: 16px !important;
+  padding: 4px 0 6px !important;
+}
+
+.cartPanel .total dd {
+  font-size: 24px;
+}
+
+.cartPanel .empty {
+  padding: 20px 4px 8px;
+}
+
+.cartPanel .empty p {
+  font-size: 14px;
+}
+
+.cartPanel .paid {
+  font-size: 30px;
+}
+
+.cartPanel .dFoot {
+  padding: 12px;
+  background: var(--ground-2);
+}
+
+.cartPanel .dFoot .btn {
+  height: 50px;
+  font-size: 17px;
+}
+
+.cartPanel .dNote {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.cartPanel .dConfirm,
+.cartPanel .dDone {
+  font-size: 14px;
+}
+
+/* Header cart button while the panel is showing: point at the panel */
+.panelFlash {
+  animation: panelFlash .9s var(--ease);
+}
+
+@keyframes panelFlash {
+  0%, 60% { box-shadow: 0 0 0 4px var(--ticket); }
+}
+
+/* Narrow screens: a bottom strip while the cart has something in it */
+.cartBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+  box-shadow: 0 -6px 20px rgba(28, 33, 48, .18);
+  animation: barIn .28s var(--ease);
+}
+
+@keyframes barIn {
+  from { transform: translateY(100%); }
+}
+
+.cartBarIn {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cartBarText {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
+}
+
+.cartBarText b {
+  color: var(--ticket);
+  font-weight: 800;
+}
+
+.cartBarText small {
+  font-size: 13px;
+  color: rgba(252, 251, 247, .72);
+}
+
+.cartBarText .cartBarBad {
+  color: #FF9C93;
+  font-weight: 700;
+}
+
+.cartBarBtn {
+  height: 48px;
+  font-size: 17px;
+  background: var(--ticket);
+  color: var(--ticket-ink);
+}
+
+.cartBarBtn:hover:not(:disabled) {
+  background: #FFD54F;
+}
+
+.hasBar .content {
+  padding-bottom: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cartBar,
+  .panelFlash {
+    animation: none;
+  }
+}
+
 @media (max-width: 860px) {
+  .cartBarIn { padding: 0 16px; gap: 10px; }
   .wrap { padding: 0 16px; }
   .topIn { gap: 8px 12px; padding-top: 10px; padding-bottom: 4px; }
   .logo { font-size: 26px; }
@@ -901,4 +1125,6 @@
   .me { font-size: 15px; }
   .tabs { gap: 0; }
   .tabs a { flex: 1; justify-content: center; padding: 0 4px; }
+  .cartBarText { font-size: 15px; }
+  .cartBarBtn { padding: 0 12px; font-size: 16px; }
 }
