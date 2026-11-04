@@ -199,7 +199,7 @@ export function CartDrawer({ isOpen, onClose, currentUser, onPurchaseComplete }:
                                         type="button"
                                         onClick={() => addItem({ ...item, quantity: item.stock })}
                                         aria-label="하나 더"
-                                        disabled={loading || item.quantity >= item.stock}
+                                        disabled={loading || item.quantity >= item.stock || left < item.cost}
                                     >
                                         <Plus aria-hidden="true" />
                                     </button>

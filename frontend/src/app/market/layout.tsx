@@ -7,7 +7,9 @@ import { LogOut, ReceiptText, ShoppingCart } from "lucide-react";
 import { Student, api } from "@/lib/api";
 import { CartProvider, useCart } from "@/context/CartContext";
 import { CartDrawer } from "@/components/CartDrawer";
+import { Dialog } from "@/components/Dialog";
 import { cn } from "@/lib/utils";
+import kit from "@/components/kit.module.css";
 import styles from "./market.module.css";
 
 const TABS = [
@@ -17,8 +19,15 @@ const TABS = [
 ];
 
 function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: () => void, onRefresh: () => void }) {
-    const { itemCount } = useCart();
+    const { itemCount, totalCost } = useCart();
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [askLogout, setAskLogout] = useState(false);
+
+    // Logging out with things still in the cart is the usual way a purchase gets forgotten.
+    const handleLogoutClick = () => {
+        if (itemCount > 0) setAskLogout(true);
+        else onLogout();
+    };
     const countRef = useRef<HTMLSpanElement>(null);
     const prevCount = useRef(itemCount);
 
@@ -59,7 +68,7 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                             <span className={styles.label}>장바구니</span>
                             <span ref={countRef} className={cn(styles.count, itemCount === 0 && styles.countZero)}>{itemCount}</span>
                         </button>
-                        <button type="button" className={styles.hbtn} onClick={onLogout} aria-label="로그아웃">
+                        <button type="button" className={styles.hbtn} onClick={handleLogoutClick} aria-label="로그아웃">
                             <LogOut className={styles.icon} aria-hidden="true" />
                             <span className={styles.label}>로그아웃</span>
                         </button>
@@ -72,6 +81,35 @@ function MarketHeader({ user, onLogout, onRefresh }: { user: Student, onLogout: 
                 currentUser={user}
                 onPurchaseComplete={onRefresh}
             />
+            {askLogout && (
+                <Dialog
+                    title={`장바구니에 ${itemCount}개가 남아 있어요`}
+                    onClose={() => setAskLogout(false)}
+                    footer={
+                        <>
+                            <button type="button" className={cn(kit.btn, kit.ghost)} onClick={onLogout}>
+                                사지 않고 나가기
+                            </button>
+                            <button
+                                type="button"
+                                className={kit.btn}
+                                data-autofocus
+                                onClick={() => {
+                                    setAskLogout(false);
+                                    setIsCartOpen(true);
+                                }}
+                            >
+                                장바구니 보기
+                            </button>
+                        </>
+                    }
+                >
+                    <p className={kit.message}>
+                        아직 구매하지 않았어요. 티켓 {totalCost}장어치 물건이 담겨 있어요.
+                        담아 둔 물건은 다음에 들어와도 남아 있지만, 그사이 다른 친구가 먼저 사면 살 수 없어요.
+                    </p>
+                </Dialog>
+            )}
         </>
     );
 }
@@ -131,7 +169,7 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
     if (!user) return null;
 
     return (
-        <CartProvider>
+        <CartProvider studentId={user.id} balance={user.ticket_count}>
             <MarketHeader user={user} onLogout={handleLogout} onRefresh={refreshUser} />
             <main className={styles.wrap}>
                 <MarketTabs />

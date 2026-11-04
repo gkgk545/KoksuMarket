@@ -20,11 +20,13 @@ function faceWord(name: string) {
 }
 
 export function ProductCard({ item, balance }: ProductCardProps) {
-    const { items: cart, addItem, removeItem } = useCart();
+    const { items: cart, addItem, removeItem, remaining } = useCart();
     const inCart = cart.find((c) => c.id === item.id)?.quantity ?? 0;
     const isSoldOut = item.quantity <= 0;
     const isLowStock = !isSoldOut && item.quantity <= 3;
     const isShort = !isSoldOut && balance < item.cost;
+    // Affordable on its own, but not on top of what is already in the cart.
+    const cartFull = !isSoldOut && !isShort && remaining < item.cost;
 
     let action: React.ReactNode;
     if (isSoldOut) {
@@ -36,13 +38,25 @@ export function ProductCard({ item, balance }: ProductCardProps) {
                     <Minus aria-hidden="true" />
                 </button>
                 <output>{inCart}</output>
-                <button type="button" onClick={() => addItem(item)} disabled={inCart >= item.quantity} aria-label="하나 더 담기">
+                <button
+                    type="button"
+                    onClick={() => addItem(item)}
+                    disabled={inCart >= item.quantity || remaining < item.cost}
+                    aria-label="하나 더 담기"
+                    title={remaining < item.cost ? "남은 티켓이 모자라요" : undefined}
+                >
                     <Plus aria-hidden="true" />
                 </button>
             </div>
         );
     } else if (isShort) {
         action = <button className={styles.btn} type="button" disabled>티켓 {item.cost - balance}장 부족</button>;
+    } else if (cartFull) {
+        action = (
+            <button className={styles.btn} type="button" disabled title="장바구니에 담은 물건을 빼면 담을 수 있어요">
+                남은 티켓 부족
+            </button>
+        );
     } else {
         action = <button className={styles.btn} type="button" onClick={() => addItem(item)}>담기</button>;
     }
@@ -50,7 +64,7 @@ export function ProductCard({ item, balance }: ProductCardProps) {
     return (
         <div className={styles.tw}>
             <article
-                className={cn(styles.tk, isSoldOut && styles.out, isShort && styles.short)}
+                className={cn(styles.tk, isSoldOut && styles.out, (isShort || cartFull) && styles.short)}
                 aria-label={`${item.name}, ${item.cost}장`}
             >
                 <div className={cn(styles.face, !item.image_url && FACE_COLORS[item.id % FACE_COLORS.length])}>
