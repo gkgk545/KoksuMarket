@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated, generateCSV, downloadCSV } from "@/lib/teacherAuth";
 import { Check, Download, Trash2, Undo2, X } from "lucide-react";
 import { TeacherShell } from "@/components/TeacherShell";
@@ -90,10 +91,7 @@ export default function PurchasesPage() {
 
     const toggleDelivered = async (purchase: PurchaseWithDetails) => {
         setBusyId(purchase.id);
-        const { error } = await supabase
-            .from("market_purchase")
-            .update({ is_delivered: !purchase.is_delivered })
-            .eq("id", purchase.id);
+        const { error } = await teacherApi.setDelivered(purchase.id, !purchase.is_delivered);
         setBusyId(null);
 
         if (error) {
@@ -113,7 +111,7 @@ export default function PurchasesPage() {
         });
         if (!ok) return;
 
-        const { error } = await supabase.rpc("cancel_purchase_rpc", { p_purchase_id: purchase.id });
+        const { error } = await teacherApi.cancelPurchase(purchase.id);
         if (error) {
             toast(`취소하지 못했어요: ${error.message}`, "error");
             return;
@@ -132,7 +130,7 @@ export default function PurchasesPage() {
         });
         if (!ok) return;
 
-        const { error } = await supabase.from("market_purchase").delete().eq("id", purchase.id);
+        const { error } = await teacherApi.deletePurchases([purchase.id]);
         if (error) {
             toast(`지우지 못했어요: ${error.message}`, "error");
             return;
@@ -195,10 +193,10 @@ export default function PurchasesPage() {
         const ids = targets.map((p) => p.id);
         const deleted = new Set<number>();
         let failure: string | null = null;
-        // Chunk so the id list stays well under URL length limits.
+        // Chunk so a very long selection stays a modest request.
         for (let i = 0; i < ids.length; i += 100) {
             const chunk = ids.slice(i, i + 100);
-            const { error } = await supabase.from("market_purchase").delete().in("id", chunk);
+            const { error } = await teacherApi.deletePurchases(chunk);
             if (error) {
                 failure = error.message;
                 break;

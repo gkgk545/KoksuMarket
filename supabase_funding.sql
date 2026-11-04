@@ -1,3 +1,6 @@
+-- ⚠️ 다시 실행하지 마세요: 이 파일의 RLS 해제·GRANT 구문이 테이블을 누구나 고칠 수 있게 다시 열어요.
+--    보안 설정은 supabase_security.sql 을 따르세요.
+
 -- 1. 펀딩(공동 구매) 테이블 생성
 CREATE TABLE market_funding (
     id SERIAL PRIMARY KEY,

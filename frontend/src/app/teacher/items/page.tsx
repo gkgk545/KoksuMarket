@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, Item } from "@/lib/supabase";
+import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
 import { Download, FileDown, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { TeacherShell } from "@/components/TeacherShell";
@@ -88,8 +89,8 @@ export default function ItemsPage() {
             image_url: form.image_url.trim() || null,
         };
         const { error } = form.id
-            ? await supabase.from("market_item").update(payload).eq("id", form.id)
-            : await supabase.from("market_item").insert(payload);
+            ? await teacherApi.updateItem(form.id, payload)
+            : await teacherApi.addItems([payload]);
         setSaving(false);
 
         if (error) {
@@ -110,7 +111,7 @@ export default function ItemsPage() {
         });
         if (!ok) return;
 
-        const { error } = await supabase.from("market_item").delete().eq("id", item.id);
+        const { error } = await teacherApi.deleteItem(item.id);
 
         if (error) {
             toast(`지우지 못했어요: ${error.message}`, "error");
@@ -144,7 +145,7 @@ export default function ItemsPage() {
             return;
         }
 
-        const { error } = await supabase.from("market_item").insert(itemsToAdd);
+        const { error } = await teacherApi.addItems(itemsToAdd);
 
         if (error) {
             toast(`올리지 못했어요: ${error.message}`, "error");

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, ChevronRight, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated } from "@/lib/teacherAuth";
 import { TeacherShell } from "@/components/TeacherShell";
 import { cn } from "@/lib/utils";
@@ -121,10 +122,7 @@ export default function TeacherDashboardPage() {
     const setDelivered = async (id: number, delivered: boolean) => {
         setBusyId(id);
         setError(null);
-        const { error } = await supabase
-            .from("market_purchase")
-            .update({ is_delivered: delivered })
-            .eq("id", id);
+        const { error } = await teacherApi.setDelivered(id, delivered);
         setBusyId(null);
 
         if (error) {

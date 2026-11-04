@@ -78,42 +78,21 @@ export const api = {
         return data || [];
     },
 
-    // Student login - verify password securely on database side via RPC with immediate client-side fallback
+    // Student login - the password is checked inside the database (the password column is not readable via the API)
     login: async (student_id: number, password: string): Promise<{ status: string; student: Student }> => {
-        try {
-            const { data, error } = await supabase.rpc('verify_student_login', {
-                p_student_id: student_id,
-                p_password: password
-            });
+        const { data, error } = await supabase.rpc('verify_student_login', {
+            p_student_id: student_id,
+            p_password: password
+        });
 
-            if (!error && data && data.length > 0) {
-                const student = data[0];
-                return { status: 'success', student };
-            }
-
-            // If it's a real credential error (wrong password/student not found), throw it
-            if (error && error.code !== '42804' && !error.message.includes('structure of query')) {
-                throw new Error('학생을 찾을 수 없거나 비밀번호가 틀렸습니다.');
-            }
-        } catch (e: any) {
-            if (e.message && e.message.includes('비밀번호')) {
-                throw e;
-            }
+        if (error) {
+            console.error('Student login failed:', error);
+            throw new Error('지금은 로그인할 수 없어요. 잠시 뒤 다시 해 주세요.');
         }
-
-        // Fallback: Query the table directly when RPC fails due to database-side type mismatches
-        const { data: directData, error: directError } = await supabase
-            .from('market_student')
-            .select('id, name, grade, ticket_count')
-            .eq('id', student_id)
-            .eq('password', password);
-
-        if (directError || !directData || directData.length === 0) {
+        if (!data || data.length === 0) {
             throw new Error('학생을 찾을 수 없거나 비밀번호가 틀렸습니다.');
         }
-
-        const student = directData[0];
-        return { status: 'success', student };
+        return { status: 'success', student: data[0] };
     },
 
     // Get all items
@@ -166,24 +145,6 @@ export const api = {
         }));
 
         return { student, purchases: transformedPurchases };
-    },
-
-    // Purchase an item - using Supabase RPC for Atomic Transaction
-    purchaseItem: async (student_id: number, item_id: number): Promise<{ status: string; message: string; student: Student }> => {
-        const { data, error } = await supabase.rpc('purchase_item', {
-            p_student_id: student_id,
-            p_item_id: item_id
-        });
-
-        if (error) {
-            throw new Error(error.message || '구매 과정에서 오류가 발생했습니다.');
-        }
-
-        return {
-            status: 'success',
-            message: '구매가 완료되었습니다!',
-            student: data as Student,
-        };
     },
 
     // Get all fundings

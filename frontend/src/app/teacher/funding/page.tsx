@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated } from "@/lib/teacherAuth";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Funding, FundingParticipation, api, fundingGrade } from "@/lib/api";
@@ -108,9 +108,10 @@ export default function TeacherFundingPage() {
             target_amount: form.target_amount,
             image_url: form.image_url.trim() || null,
         };
-        const { error } = form.id
-            ? await supabase.from("market_funding").update({ ...payload, is_completed: form.is_completed }).eq("id", form.id)
-            : await supabase.from("market_funding").insert(payload);
+        const { error } = await teacherApi.saveFunding(
+            form.id ?? null,
+            form.id ? { ...payload, is_completed: form.is_completed } : payload,
+        );
         setSaving(false);
 
         if (error) {
@@ -131,7 +132,7 @@ export default function TeacherFundingPage() {
         });
         if (!ok) return;
 
-        const { error } = await supabase.from("market_funding").delete().eq("id", f.id);
+        const { error } = await teacherApi.deleteFunding(f.id);
 
         if (error) {
             toast(`지우지 못했어요: ${error.message}`, "error");

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabase, Student } from "@/lib/supabase";
+import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated, parseCSV, generateCSV, downloadCSV } from "@/lib/teacherAuth";
 import { Check, Download, FileDown, KeyRound, Minus, Plus, Search, Ticket, Trash2, Upload, UserPlus, X } from "lucide-react";
 import { TeacherShell } from "@/components/TeacherShell";
@@ -50,11 +51,7 @@ export default function GradeStudentsPage() {
     );
 
     const loadStudents = async () => {
-        const { data, error } = await supabase
-            .from("market_student")
-            .select("*")
-            .eq("grade", grade)
-            .order("name");
+        const { data, error } = await teacherApi.listStudents(grade);
 
         if (error) {
             console.error("Failed to load students:", error);
@@ -80,10 +77,7 @@ export default function GradeStudentsPage() {
     };
 
     const saveTickets = async (student: Student) => {
-        const { error } = await supabase
-            .from("market_student")
-            .update({ ticket_count: editTickets })
-            .eq("id", student.id);
+        const { error } = await teacherApi.setTickets([student.id], "set", editTickets);
 
         if (error) {
             toast(`저장하지 못했어요: ${error.message}`, "error");
@@ -111,18 +105,8 @@ export default function GradeStudentsPage() {
         });
         if (!ok) return;
 
-        // 먼저 관련 구매 기록 삭제
-        if (count && count > 0) {
-            await supabase
-                .from("market_purchase")
-                .delete()
-                .eq("student_id", student.id);
-        }
-
-        const { error } = await supabase
-            .from("market_student")
-            .delete()
-            .eq("id", student.id);
+        // 구매 기록과 함께 지우기 (서버 함수에서 한 번에)
+        const { error } = await teacherApi.deleteStudent(student.id);
 
         if (error) {
             toast(`지우지 못했어요: ${error.message}`, "error");
@@ -139,10 +123,7 @@ export default function GradeStudentsPage() {
             return;
         }
 
-        const { error } = await supabase
-            .from("market_student")
-            .update({ password: newPassword.trim() })
-            .eq("id", passwordTarget.id);
+        const { error } = await teacherApi.setStudentPassword(passwordTarget.id, newPassword.trim());
 
         if (error) {
             setDialogError(`바꾸지 못했어요: ${error.message}`);
@@ -159,14 +140,12 @@ export default function GradeStudentsPage() {
             return;
         }
 
-        const { error } = await supabase
-            .from("market_student")
-            .insert({
-                name: newStudent.name.trim(),
-                grade,
-                password: newStudent.password,
-                ticket_count: newStudent.ticket_count,
-            });
+        const { error } = await teacherApi.addStudents([{
+            name: newStudent.name.trim(),
+            grade,
+            password: newStudent.password,
+            ticket_count: newStudent.ticket_count,
+        }]);
 
         if (error) {
             setDialogError(`추가하지 못했어요: ${error.message}`);
@@ -203,7 +182,7 @@ export default function GradeStudentsPage() {
             return;
         }
 
-        const { error } = await supabase.from("market_student").insert(studentsToAdd);
+        const { error } = await teacherApi.addStudents(studentsToAdd);
 
         if (error) {
             toast(`올리지 못했어요: ${error.message}`, "error");
@@ -252,29 +231,20 @@ export default function GradeStudentsPage() {
         if (selectedIds.size === 0 || bulkTicketAmount < 1) return;
 
         setBulkSaving(true);
-        const updates = students
-            .filter(s => selectedIds.has(s.id))
-            .map(s => ({
-                id: s.id,
-                ticket_count: bulkTicketAction === "add"
-                    ? s.ticket_count + bulkTicketAmount
-                    : Math.max(0, s.ticket_count - bulkTicketAmount),
-            }));
-
-        for (const update of updates) {
-            await supabase
-                .from("market_student")
-                .update({ ticket_count: update.ticket_count })
-                .eq("id", update.id);
-        }
+        const ids = students.filter((s) => selectedIds.has(s.id)).map((s) => s.id);
+        const { error } = await teacherApi.setTickets(ids, bulkTicketAction, bulkTicketAmount);
         setBulkSaving(false);
+        if (error) {
+            toast(`티켓을 바꾸지 못했어요: ${error.message}`, "error");
+            return;
+        }
 
         setShowBulkTicketModal(false);
         setSelectedIds(new Set());
         loadStudents();
         toast(bulkTicketAction === "add"
-            ? `${updates.length}명에게 티켓 ${bulkTicketAmount}장씩 주었어요.`
-            : `${updates.length}명에게서 티켓 ${bulkTicketAmount}장씩 거둬들였어요.`);
+            ? `${ids.length}명에게 티켓 ${bulkTicketAmount}장씩 주었어요.`
+            : `${ids.length}명에게서 티켓 ${bulkTicketAmount}장씩 거둬들였어요.`);
     };
 
     const ticketTotal = students.reduce((sum, s) => sum + s.ticket_count, 0);
