@@ -41,7 +41,8 @@ BEGIN
     WHERE id = v_id;
 
     -- 예전 비밀번호로 들어와 있던 모든 기기 로그아웃
-    DELETE FROM market_teacher_session;
+    -- (Supabase는 API로 부른 함수에서 WHERE 없는 DELETE를 막으므로 WHERE true 를 붙여요)
+    DELETE FROM market_teacher_session WHERE true;
 
     RETURN json_build_object('status', 'success');
 END;
