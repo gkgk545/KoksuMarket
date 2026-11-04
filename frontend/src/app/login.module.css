@@ -382,6 +382,32 @@
   margin: 10px 0 0;
 }
 
+/* Second and third password fields in the change form */
+.nextField {
+  margin-top: 20px;
+}
+
+/* Success note, e.g. after the password was changed (the "완료" blue) */
+.ok {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  background: var(--done-bg);
+  color: var(--done);
+  border-radius: var(--r);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ok svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
 .err {
   display: flex;
   align-items: flex-start;
@@ -453,7 +479,8 @@
   justify-content: center;
 }
 
-.links a {
+.links a,
+.links button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -466,7 +493,12 @@
   border-radius: var(--r);
 }
 
-.links a:hover {
+.links button {
+  cursor: pointer;
+}
+
+.links a:hover,
+.links button:hover {
   color: var(--ink);
   background: var(--ground-2);
 }

@@ -32,6 +32,31 @@ export async function login(password: string, rememberMe: boolean = false): Prom
     }
 }
 
+export type ChangePasswordResult = "ok" | "wrong_password" | "too_short" | "error";
+
+// 지금 비밀번호가 맞을 때만 바뀌어요. 바뀌면 서버가 모든 교사 세션을 지우므로 이 기기도 로그아웃해요.
+export async function changePassword(current: string, next: string): Promise<ChangePasswordResult> {
+    try {
+        const { data, error } = await supabase.rpc("change_teacher_password", {
+            p_current: current,
+            p_new: next,
+        });
+        if (error || !data) {
+            console.error("Teacher password change error:", error);
+            return "error";
+        }
+        if (data.status === "success") {
+            localStorage.removeItem(AUTH_KEY);
+            localStorage.removeItem(EXPIRY_KEY);
+            return "ok";
+        }
+        return data.reason === "too_short" ? "too_short" : "wrong_password";
+    } catch (e) {
+        console.error("Teacher password change error:", e);
+        return "error";
+    }
+}
+
 export function getTeacherToken(): string | null {
     return localStorage.getItem(AUTH_KEY);
 }
