@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { api, Funding, Student } from "@/lib/api";
+import { api, Funding, Student, isFundingForGrade } from "@/lib/api";
 import { FundingStrip } from "@/components/FundingStrip";
 import { useToast } from "@/components/feedback";
 import { cn } from "@/lib/utils";
@@ -83,7 +83,7 @@ function GiveTray({ funding, balance, submitting, onCancel, onGive }: GiveTrayPr
 }
 
 export default function FundingPage() {
-    const [fundings, setFundings] = useState<Funding[]>([]);
+    const [allFundings, setAllFundings] = useState<Funding[]>([]);
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [openId, setOpenId] = useState<number | null>(null);
@@ -92,7 +92,7 @@ export default function FundingPage() {
 
     const loadFundings = () => {
         api.getFundings()
-            .then(setFundings)
+            .then(setAllFundings)
             .finally(() => setLoading(false));
     };
 
@@ -127,6 +127,8 @@ export default function FundingPage() {
     };
 
     const balance = user?.ticket_count ?? 0;
+    // 내 학년 펀딩과 전체 학년 펀딩만 보여 줘요.
+    const fundings = user ? allFundings.filter((f) => isFundingForGrade(f, user.grade)) : [];
     const isDone = (f: Funding) => f.is_completed || f.current_amount >= f.target_amount;
     const open = fundings.filter((f) => !isDone(f));
     const finished = fundings.filter(isDone);

@@ -1,0 +1,76 @@
+.checkCell {
+  width: 52px;
+}
+
+/* Bulk bar pinned to the bottom while purchases are selected */
+.bulk {
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px 10px 20px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 10px 24px rgba(28, 33, 48, .28);
+  animation: up .2s var(--ease);
+}
+
+@keyframes up {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+.bulk p {
+  margin: 0 auto 0 0;
+  font-weight: 800;
+}
+
+.bulkBtn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--r);
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font: 800 14px/1 var(--ui);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.bulkBtn:hover:not(:disabled) {
+  background: #FFD65A;
+}
+
+.bulkBtn:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.bulkBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.clear {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: rgba(255, 255, 255, .12);
+}
+
+@media (max-width: 640px) {
+  .bulk { padding: 10px 12px; }
+  .bulk p { width: 100%; }
+}

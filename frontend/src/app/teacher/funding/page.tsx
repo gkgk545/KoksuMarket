@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAuthenticated } from "@/lib/teacherAuth";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
-import { Funding, FundingParticipation, api } from "@/lib/api";
+import { Funding, FundingParticipation, api, fundingGrade } from "@/lib/api";
 import { TeacherShell } from "@/components/TeacherShell";
 import { Dialog } from "@/components/Dialog";
 import { FundingStrip } from "@/components/FundingStrip";
@@ -21,9 +21,13 @@ type FundingForm = {
     target_amount: number;
     image_url: string;
     is_completed: boolean;
+    grade: number | "all" | null; // null = 아직 고르지 않음
 };
 
-const EMPTY_FORM: FundingForm = { title: "", description: "", target_amount: 100, image_url: "", is_completed: false };
+const EMPTY_FORM: FundingForm = { title: "", description: "", target_amount: 100, image_url: "", is_completed: false, grade: null };
+
+const GRADES = [3, 4, 5, 6];
+const gradeLabel = (g: number | null) => (g === null ? "전체 학년" : `${g}학년`);
 
 function stamp(iso: string) {
     const d = new Date(iso);
@@ -77,6 +81,7 @@ export default function TeacherFundingPage() {
             target_amount: f.target_amount,
             image_url: f.image_url ?? "",
             is_completed: f.is_completed,
+            grade: fundingGrade(f) ?? "all",
         });
     };
 
@@ -90,9 +95,14 @@ export default function TeacherFundingPage() {
             setFormError("목표는 1장 이상이어야 해요.");
             return;
         }
+        if (form.grade === null) {
+            setFormError("어느 학년 펀딩인지 골라 주세요.");
+            return;
+        }
 
         setSaving(true);
         const payload = {
+            grade: form.grade === "all" ? null : form.grade,
             title: form.title.trim(),
             description: form.description.trim() || null,
             target_amount: form.target_amount,
@@ -173,6 +183,7 @@ export default function TeacherFundingPage() {
                                 <li key={f.id} className={cn(styles.row, closed && styles.closed)}>
                                     <div>
                                         <div className={styles.titleLine}>
+                                            <span className={t.tag}>{gradeLabel(fundingGrade(f))}</span>
                                             <span className={styles.title}>{f.title}</span>
                                             {closed ? (
                                                 <span className={t.tag}>마감</span>
@@ -257,6 +268,19 @@ export default function TeacherFundingPage() {
                 >
                     <form className={t.form} onSubmit={(e) => { e.preventDefault(); saveFunding(); }}>
                         {formError && <p className={t.error} role="alert">{formError}</p>}
+                        <div>
+                            <span className={t.label} id="fund-grade">대상 학년</span>
+                            <div className={t.choice} role="group" aria-labelledby="fund-grade">
+                                {GRADES.map((g) => (
+                                    <button key={g} type="button" aria-pressed={form.grade === g} onClick={() => setForm({ ...form, grade: g })}>
+                                        {g}학년
+                                    </button>
+                                ))}
+                                <button type="button" aria-pressed={form.grade === "all"} onClick={() => setForm({ ...form, grade: "all" })}>
+                                    전체 학년
+                                </button>
+                            </div>
+                        </div>
                         <div>
                             <label className={t.label} htmlFor="fund-title">펀딩 이름</label>
                             <input

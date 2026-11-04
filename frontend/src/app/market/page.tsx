@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, Funding, Item, Student } from "@/lib/api";
+import { api, Funding, Item, Student, isFundingForGrade } from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
 import { FundingStrip } from "@/components/FundingStrip";
 import styles from "./market.module.css";
@@ -32,7 +32,7 @@ function FundingTeaser({ funding, now }: { funding: Funding; now: number }) {
 
 export default function MarketPage() {
     const [items, setItems] = useState<Item[]>([]);
-    const [funding, setFunding] = useState<{ data: Funding; loadedAt: number } | null>(null);
+    const [fundings, setFundings] = useState<{ list: Funding[]; loadedAt: number } | null>(null);
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -51,10 +51,7 @@ export default function MarketPage() {
         loadUserFromStorage();
         loadItems();
         api.getFundings()
-            .then((list) => {
-                const open = list.find((f) => !f.is_completed);
-                setFunding(open ? { data: open, loadedAt: Date.now() } : null);
-            })
+            .then((list) => setFundings({ list, loadedAt: Date.now() }))
             .catch((e) => console.error("Failed to load fundings", e));
 
         window.addEventListener("purchase_complete", loadItems);
@@ -66,11 +63,13 @@ export default function MarketPage() {
     }, []);
 
     const balance = user?.ticket_count ?? 0;
+    // 내 학년(또는 전체 학년) 펀딩 중 아직 모으는 것 하나만 보여 줘요.
+    const openFunding = user ? fundings?.list.find((f) => !f.is_completed && isFundingForGrade(f, user.grade)) : undefined;
     const affordable = items.filter((i) => i.quantity > 0 && balance >= i.cost).length;
 
     return (
         <>
-            {funding && <FundingTeaser funding={funding.data} now={funding.loadedAt} />}
+            {openFunding && fundings && <FundingTeaser funding={openFunding} now={fundings.loadedAt} />}
 
             <div className={styles.shelfHead}>
                 <h1>판매 중인 물건</h1>

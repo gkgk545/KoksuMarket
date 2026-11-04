@@ -38,6 +38,21 @@ export interface Funding {
     image_url: string | null;
     deadline: string | null;
     is_completed: boolean;
+    grade?: number | null; // 대상 학년. null 이면 전체 학년 펀딩
+}
+
+// 펀딩의 대상 학년 (null = 전체 학년).
+// grade 컬럼이 아직 없는 DB(supabase_funding_grade.sql 실행 전)에서는 제목의 "○학년"으로 추정해요.
+export function fundingGrade(f: Funding): number | null {
+    if (f.grade !== undefined) return f.grade;
+    const m = f.title.match(/([3-6])학년/);
+    return m ? Number(m[1]) : null;
+}
+
+// 이 학년 학생에게 보여 줄 펀딩인지
+export function isFundingForGrade(f: Funding, grade: number | undefined): boolean {
+    const g = fundingGrade(f);
+    return g === null || g === grade;
 }
 
 export interface FundingParticipation {
