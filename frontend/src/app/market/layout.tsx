@@ -9,6 +9,8 @@ import { CartProvider, useCart } from "@/context/CartContext";
 import { CartDrawer, CartPanel } from "@/components/CartDrawer";
 import { CartBar } from "@/components/CartBar";
 import { Dialog } from "@/components/Dialog";
+import { ClosedNotice } from "@/components/ClosedNotice";
+import { useMarketStatus } from "@/lib/marketStatus";
 import { cn } from "@/lib/utils";
 import kit from "@/components/kit.module.css";
 import styles from "./market.module.css";
@@ -215,6 +217,8 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
     const router = useRouter();
     const [user, setUser] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
+    const marketStatus = useMarketStatus({ watch: true });
+    const path = useCurrentPath();
 
     // After a purchase: fetch the fresh balance and show it.
     const refreshUser = useCallback(() => {
@@ -244,8 +248,13 @@ export default function MarketLayout({ children }: { children: React.ReactNode }
         router.push("/");
     };
 
-    if (loading) {
+    if (loading || !marketStatus) {
         return <div className={styles.loadingPage}>가게 문을 여는 중…</div>;
+    }
+
+    // 임시 휴업: 상품·펀딩·구매 기록 화면 대신 안내 (예전 /market/ranking 주소는 랭킹으로 보내 줘요)
+    if (marketStatus.is_closed && path !== "/market/ranking") {
+        return <ClosedNotice status={marketStatus} onLogout={handleLogout} />;
     }
 
     if (!user) return null;

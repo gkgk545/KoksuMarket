@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { logout } from "@/lib/teacherAuth";
 import { cn } from "@/lib/utils";
+import { reopenSummary, useMarketStatus } from "@/lib/marketStatus";
 import styles from "@/app/teacher/teacher.module.css";
+import closure from "./closurePanel.module.css";
 
 const SECTIONS = [
     { href: "/teacher/dashboard", match: "/teacher/dashboard", label: "대시보드" },
@@ -31,6 +33,8 @@ interface TeacherShellProps {
 export function TeacherShell({ children, pendingCount }: TeacherShellProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const market = useMarketStatus();
+    const when = market ? reopenSummary(market) : null;
 
     const handleLogout = () => {
         logout();
@@ -61,6 +65,20 @@ export function TeacherShell({ children, pendingCount }: TeacherShellProps) {
                         </Link>
                     ))}
                 </nav>
+                {market?.is_closed && (
+                    <p className={closure.banner} role="status">
+                        <span className={closure.bannerStamp}>임시 휴업</span>
+                        <span className={closure.bannerText}>
+                            학생 마켓이 닫혀 있어요.
+                            {when ? ` ${when}에 다시 연다고 안내하고 있어요.` : " 다시 여는 날은 아직 정하지 않았어요."}
+                        </span>
+                        {!pathname.startsWith("/teacher/dashboard") && (
+                            <Link href="/teacher/dashboard" className={closure.bannerLink}>
+                                대시보드에서 열기
+                            </Link>
+                        )}
+                    </p>
+                )}
                 <main className={styles.main}>{children}</main>
             </div>
         </>

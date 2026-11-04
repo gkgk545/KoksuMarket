@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { readableMarketError } from './marketStatus';
 
 // Types matching the database schema
 export interface Student {
@@ -200,7 +201,7 @@ export const api = {
         });
 
         if (error) {
-            throw new Error(error.message || '참여 과정에서 오류가 발생했습니다.');
+            throw new Error(readableMarketError(error.message || '참여 과정에서 오류가 발생했습니다.'));
         }
 
         return {
@@ -218,7 +219,7 @@ export const api = {
         });
 
         if (error) {
-            throw new Error(error.message || '구매 과정에서 오류가 발생했습니다.');
+            throw new Error(readableMarketError(error.message || '구매 과정에서 오류가 발생했습니다.'));
         }
 
         return data;

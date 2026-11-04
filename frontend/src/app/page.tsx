@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, CircleAlert } from "lucide-react";
 import { api, Student } from "@/lib/api";
+import { useMarketStatus } from "@/lib/marketStatus";
+import { ClosedNotice } from "@/components/ClosedNotice";
 import styles from "./login.module.css";
 
 type Step = "grade" | "student" | "password";
@@ -19,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const marketStatus = useMarketStatus({ watch: true });
 
   // Fetch students when grade is selected
   useEffect(() => {
@@ -83,6 +86,18 @@ export default function LoginPage() {
     { step: "student", label: "이름", value: selectedStudent?.name ?? null, empty: "고르기 전", enabled: !!selectedGrade },
     { step: "password", label: "비밀번호", value: password ? "●".repeat(Math.min(password.length, 6)) : null, empty: "입력 전", enabled: !!selectedStudent },
   ];
+
+  // 교사가 마켓을 임시로 닫았으면 로그인 대신 휴업 안내 (랭킹·교사 페이지는 계속 열림)
+  if (!marketStatus) {
+    return (
+      <div className={styles.page}>
+        <p className={styles.loading}>잠시만요…</p>
+      </div>
+    );
+  }
+  if (marketStatus.is_closed) {
+    return <ClosedNotice status={marketStatus} />;
+  }
 
   return (
     <div className={styles.page}>

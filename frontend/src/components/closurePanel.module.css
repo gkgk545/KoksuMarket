@@ -1,0 +1,150 @@
+/* Dashboard panel for closing the student market. Panel, buttons and form fields come from teacher.module.css. */
+
+.closedPanel {
+  box-shadow: 0 0 0 2px var(--stamp), 0 2px 6px rgba(28, 33, 48, .06);
+}
+
+.openTag {
+  margin-left: auto;
+  background: var(--done-bg);
+  color: var(--done);
+}
+
+/* Same rubber stamp as the student-side notice, sized for a panel header */
+.stamp {
+  margin-left: auto;
+  display: inline-block;
+  font: 400 14px/1 var(--display);
+  letter-spacing: .06em;
+  color: var(--stamp);
+  border: 2px solid var(--stamp);
+  border-radius: 4px;
+  padding: 5px 8px 4px;
+  transform: rotate(-3deg);
+  white-space: nowrap;
+}
+
+.body {
+  padding: 16px 20px 18px;
+}
+
+.lede {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.facts dt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.facts dd {
+  margin: 2px 0 0;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.facts .none {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.when {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #FBF1C9;
+  color: #5A4A12;
+  font-size: 12px;
+  font-weight: 800;
+  vertical-align: 2px;
+}
+
+.note {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--r);
+  background: var(--stamp-bg);
+  color: var(--stamp);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.acts {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.acts > * {
+  flex: 1;
+}
+
+.optional {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.formHint {
+  margin-top: -6px;
+}
+
+/* Strip under the teacher tabs on every page while the market is closed */
+.banner {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  background: var(--stamp-bg);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bannerStamp {
+  font: 400 13px/1 var(--display);
+  letter-spacing: .06em;
+  color: var(--stamp);
+  border: 2px solid var(--stamp);
+  border-radius: 4px;
+  padding: 4px 6px 3px;
+  transform: rotate(-3deg);
+  white-space: nowrap;
+}
+
+.bannerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.bannerLink {
+  color: var(--stamp);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  padding: 4px 2px;
+}
+
+.timeInput:disabled {
+  background: var(--paper-2);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}

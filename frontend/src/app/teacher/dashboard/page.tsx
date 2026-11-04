@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated } from "@/lib/teacherAuth";
 import { TeacherShell } from "@/components/TeacherShell";
+import { MarketClosurePanel } from "@/components/MarketClosurePanel";
 import { cn } from "@/lib/utils";
 import t from "../teacher.module.css";
 import styles from "./dashboard.module.css";
@@ -225,6 +226,7 @@ export default function TeacherDashboardPage() {
                 </section>
 
                 <div className={styles.side}>
+                    <MarketClosurePanel />
                     <section className={t.panel} aria-labelledby="grade-title">
                         <div className={t.pHead}>
                             <h2 id="grade-title">학년별 현황</h2>

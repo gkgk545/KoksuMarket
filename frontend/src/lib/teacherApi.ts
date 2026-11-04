@@ -2,6 +2,7 @@
 
 import { supabase, Student } from "./supabase";
 import { getTeacherToken, logout } from "./teacherAuth";
+import type { MarketStatus } from "./marketStatus";
 
 // 교사 작업은 모두 DB 함수(supabase_security.sql)를 거쳐요.
 // 함수가 로그인 토큰을 확인하므로, 공개 키만으로는 데이터를 고치거나 지울 수 없어요.
@@ -73,4 +74,20 @@ export const teacherApi = {
     saveFunding: (fundingId: number | null, funding: FundingInput) =>
         call("teacher_save_funding", { p_funding_id: fundingId, p_funding: funding }),
     deleteFunding: (fundingId: number) => call("teacher_delete_funding", { p_funding_id: fundingId }),
+
+    // 학생 마켓 임시 휴업 (supabase_market_closure.sql). 마켓 랭킹·교사 페이지는 계속 열려 있어요.
+    setMarketClosure: (closure: MarketClosureInput) =>
+        call<MarketStatus>("teacher_set_market_closure", {
+            p_closed: closure.is_closed,
+            p_reopen_date: closure.reopen_date || null,
+            p_reopen_time: closure.reopen_date && closure.reopen_time ? closure.reopen_time : null,
+            p_message: closure.message,
+        }),
 };
+
+export interface MarketClosureInput {
+    is_closed: boolean;
+    reopen_date: string | null; // "2026-11-10"
+    reopen_time: string | null; // "09:00"
+    message: string | null;
+}
