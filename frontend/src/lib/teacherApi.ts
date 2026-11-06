@@ -83,6 +83,12 @@ export const teacherApi = {
             p_reopen_time: closure.reopen_date && closure.reopen_time ? closure.reopen_time : null,
             p_message: closure.message,
         }),
+
+    // 랜덤 상품 돌림판 (supabase_random_draw.sql). 번호는 DB가 골라요.
+    listRandomDraws: () => call<{ bag: number[]; biscuit: number[] }>("teacher_list_random_draws"),
+    drawRandom: (pool: string) => call<{ number: number; drawn: number[] }>("teacher_draw_random", { p_pool: pool }),
+    undoRandomDraw: (pool: string) => call<number[]>("teacher_undo_random_draw", { p_pool: pool }),
+    resetRandomDraws: (pool: string) => call<number[]>("teacher_reset_random_draw", { p_pool: pool }),
 };
 
 export interface MarketClosureInput {

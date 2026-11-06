@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, ChevronRight, ExternalLink } from "lucide-react";
+import { Check, ChevronRight, Disc3, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { teacherApi } from "@/lib/teacherApi";
 import { isAuthenticated } from "@/lib/teacherAuth";
 import { TeacherShell } from "@/components/TeacherShell";
 import { MarketClosurePanel } from "@/components/MarketClosurePanel";
+import { RandomDrawPanel } from "@/components/RandomDrawPanel";
+import { RandomDrawDialog } from "@/components/RandomDrawDialog";
+import { getPool, poolForItemName, type PoolId } from "@/lib/randomDraw";
 import { cn } from "@/lib/utils";
 import t from "../teacher.module.css";
 import styles from "./dashboard.module.css";
@@ -48,6 +51,7 @@ export default function TeacherDashboardPage() {
     const [filter, setFilter] = useState(0);
     const [busyId, setBusyId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [drawPool, setDrawPool] = useState<PoolId | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -144,7 +148,9 @@ export default function TeacherDashboardPage() {
         );
     }
 
-    const rows = pending.filter((p) => !filter || p.student?.grade === filter);
+    const rows = pending
+        .filter((p) => !filter || p.student?.grade === filter)
+        .map((p) => ({ ...p, pool: poolForItemName(p.item?.name) }));
     const studentTotal = gradeStats.reduce((sum, s) => sum + s.studentCount, 0);
     const ticketTotal = gradeStats.reduce((sum, s) => sum + s.totalTickets, 0);
 
@@ -207,10 +213,24 @@ export default function TeacherDashboardPage() {
                                                 </button>
                                             </>
                                         ) : (
-                                            <button type="button" className={t.btn} onClick={() => setDelivered(r.id, true)} disabled={busyId === r.id}>
-                                                <Check aria-hidden="true" />
-                                                전달 완료
-                                            </button>
+                                            <>
+                                                {r.pool && (
+                                                    <button
+                                                        type="button"
+                                                        className={cn(t.btn, t.ghost, styles.drawBtn)}
+                                                        onClick={() => setDrawPool(r.pool)}
+                                                        aria-label={`${getPool(r.pool).label} 번호 뽑기`}
+                                                        title="돌림판으로 번호 뽑기"
+                                                    >
+                                                        <Disc3 aria-hidden="true" />
+                                                        뽑기
+                                                    </button>
+                                                )}
+                                                <button type="button" className={t.btn} onClick={() => setDelivered(r.id, true)} disabled={busyId === r.id}>
+                                                    <Check aria-hidden="true" />
+                                                    전달 완료
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 </li>
@@ -227,6 +247,7 @@ export default function TeacherDashboardPage() {
 
                 <div className={styles.side}>
                     <MarketClosurePanel />
+                    <RandomDrawPanel onOpen={setDrawPool} />
                     <section className={t.panel} aria-labelledby="grade-title">
                         <div className={t.pHead}>
                             <h2 id="grade-title">학년별 현황</h2>
@@ -266,6 +287,8 @@ export default function TeacherDashboardPage() {
                     </section>
                 </div>
             </div>
+
+            {drawPool && <RandomDrawDialog initialPool={drawPool} onClose={() => setDrawPool(null)} />}
         </TeacherShell>
     );
 }
