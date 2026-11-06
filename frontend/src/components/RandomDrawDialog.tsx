@@ -148,7 +148,7 @@ export function RandomDrawDialog({ initialPool, onClose }: RandomDrawDialogProps
     return (
         <Dialog
             title="랜덤 번호 뽑기"
-            description="한 번 나온 번호는 다시 나오지 않아요. 어느 교사 컴퓨터에서 뽑아도 함께 기억돼요."
+            description="한 번 나온 번호는 다시 나오지 않아요."
             onClose={close}
             width={600}
             footer={
